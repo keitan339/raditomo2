@@ -55,7 +55,7 @@
 | 通知 | Gmail SMTP（アプリパスワード方式） |
 | バッチ | Spring Scheduler（cron `0 30 5 * * *` Asia/Tokyo） |
 | CLI | Picocli（ホストラッパー `./raditomo`） |
-| ID3 | mp3agic（TLEN フレームに放送時間ミリ秒） |
+| ID3 | ffmpeg `-metadata`（ID3v2.3）。Duration は MP3 フレームヘッダで再現。mp3agic は依存に残し将来必要時のみ使う |
 | HTTP（ラジコ） | Java 21 標準 HttpClient + Virtual Threads |
 | MP3 | 128 kbps CBR |
 | HLS変換 | ffmpeg |

@@ -219,30 +219,29 @@ public void runAsync(Long execId, BatchRunRequest req) {
 
 ### ID3タグ実装
 
-- ライブラリ: **mp3agic** (`com.mpatric:mp3agic:0.9.x`)
-- 理由: 軽量、シンプル、Java 標準の代替として実績あり
-- ffmpeg の `-metadata` 経由でも可能だが、Album Artist 等を含めた厳密な制御は mp3agic で行う
+- 主経路: **ffmpeg の `-metadata`** で書き込む（ID3v2.3）
+- 補助: **mp3agic** (`com.mpatric:mp3agic:0.9.x`) は依存として残し、将来 ffmpeg では出せないタグが必要になったときに使う
+- Duration: **MP3 フレームヘッダ（CBR 128 kbps の合計フレーム数）から算出**するため明示書き込みは不要
+  - mp3agic 0.9.1 は ID3v2 の TLEN フレームに対応するパブリックなセッターを公開していない
+  - 主要プレイヤー（VLC / iTunes / Web hls.js / OS 標準）は MP3 フレームヘッダから duration を計算するため実害なし
+  - 将来 TLEN を厳密に書きたい場合は jaudiotagger への乗り換えを検討
 
-```java
-Mp3File mp3 = new Mp3File(filePath);
-ID3v2 tag = new ID3v24Tag();
-tag.setTitle(programTitle + "_" + dateTime);                   // 例: オールナイトニッポン_20260222-0100
-tag.setArtist(performers);                                      // 出演者
-tag.setAlbum(programTitle);                                     // 番組名
-tag.setAlbumArtist(stationNameJa);                              // 放送局の和名
-tag.setYear(String.valueOf(broadcastStartAt.getYear()));        // 放送開始年（YYYY）
-tag.setDate(yyyymmddHHMM);                                      // 放送開始日時（YYYYMMDD-HHMM）
+#### ffmpeg コマンド（要件 F2 のID3項目）
 
-// Duration: 放送時間（ID3v2 の TLEN フレーム、ミリ秒単位）
-long durationMillis = Duration.between(broadcastStartAt, broadcastEndAt).toMillis();
-tag.setLength(String.valueOf(durationMillis));                  // mp3agic: ID3v24Tag.setLength() → TLEN フレーム
-
-mp3.setId3v2Tag(tag);
-mp3.save(filePath + ".tmp");
-Files.move(Paths.get(filePath + ".tmp"), Paths.get(filePath), REPLACE_EXISTING);
+```bash
+ffmpeg -y -i input.aac \
+  -c:a libmp3lame -b:a 128k \
+  -id3v2_version 3 \
+  -metadata title="オールナイトニッポン_20260222-0100"   `# 番組名_YYYYMMDD-HHMM` \
+  -metadata artist="出演者A, 出演者B"                     `# 出演者` \
+  -metadata album="オールナイトニッポン"                  `# 番組名` \
+  -metadata album_artist="ニッポン放送"                   `# 放送局の和名` \
+  -metadata date="20260222"                               `# 放送開始日（YYYYMMDD）` \
+  -metadata year="2026"                                   `# 放送開始年（YYYY）` \
+  output.mp3
 ```
 
-※ MP3ファイル自体の再生時間は ffmpeg 出力時に自動的にメタデータとしても付与されるが、要件「Duration: 放送時間」を満たすため `TLEN` フレームに明示的に放送時間（ミリ秒）をセットする。
+要件 F1 の `Date: 放送開始日時（YYYYMMDD-HHMM）` 形式は、ffmpeg 標準の `date` メタデータが日時混在を許容するため `YYYYMMDD-HHMM` を渡すか、`date=YYYYMMDD` + `comment=HHMM` 等の運用判断（実装時に最終確定）。
 
 ### ファイル削除（F3 から）
 

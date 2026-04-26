@@ -160,9 +160,10 @@ F2 実行
 
 ### ID3タグ付与
 
-- ffmpeg の `-metadata` で基本付与可能
-- 詳細制御が必要な場合は **mp3agic** ライブラリで後処理
-- Album Artist は ffmpeg の `-metadata album_artist=...` で対応
+- ffmpeg の `-metadata`（ID3v2.3）で全タグを付与する
+- Album Artist は `-metadata album_artist=...`、Date/Year も `-metadata` で対応
+- Duration（要件 F1）は MP3 フレームヘッダで再現するため明示書き込みは行わない（詳細は `05-batch-file-notification.md` 参照）
+- mp3agic は依存に残しているが、現時点での出力経路はすべて ffmpeg 経由
 
 ### HLS 事前変換
 
