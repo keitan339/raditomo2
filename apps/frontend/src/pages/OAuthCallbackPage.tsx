@@ -1,5 +1,5 @@
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
@@ -9,29 +9,29 @@ export function OAuthCallbackPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [error, setError] = useState<string | null>(null);
+  // React 18 StrictMode 下で useEffect が dev 中 2 回走り、認可コードが二重消費されると
+  // 2 回目で IdP から "Code not valid" が返って失敗する。1 回目だけ処理するためのガード。
+  const handledRef = useRef(false);
 
   useEffect(() => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     if (!code || !state) {
       setError('認可コードまたは state が指定されていません');
       return;
     }
-    let cancelled = false;
     (async () => {
       try {
         const result = await authApi.callback(code, state);
-        if (cancelled) return;
         setAuth(result.accessToken, result.user);
         navigate('/', { replace: true });
       } catch (e) {
-        if (cancelled) return;
         setError(e instanceof Error ? e.message : 'ログイン処理に失敗しました');
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [searchParams, setAuth, navigate]);
 
   if (error) {

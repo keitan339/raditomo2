@@ -78,6 +78,10 @@ raditomo:
 ---
 # DevContainer 用ローカル開発プロファイル。
 # 起動: mvn -Dspring-boot.run.profiles=local spring-boot:run
+#
+# OIDC IdP は Keycloak（compose の keycloak サービスを使う前提）。
+# 全URLを http://localhost:18080 に統一（network_mode: service:dev で
+# dev コンテナと同居しているためブラウザ・dev コンテナ双方から到達可能）。
 spring:
   config:
     activate:
@@ -96,35 +100,19 @@ raditomo:
     enabled: false  # 5:30 cron はローカルでは止める
   notification:
     enabled: false  # SMTP 設定なしで起動できるように
-
-logging:
-  level:
-    com.raditomo: DEBUG
-
----
-# Keycloak をローカル開発用 OIDC IdP として使うプロファイル。
-# 起動: docker compose -f .devcontainer/docker-compose.yml up -d keycloak
-#       mvn -Dspring-boot.run.profiles=local,local-keycloak spring-boot:run
-#
-# - ブラウザは http://localhost:18080 で Keycloak に到達
-# - dev コンテナ（backend）は内部ネットワーク http://keycloak:8080 で到達
-# - id_token の iss は KC_HOSTNAME=http://localhost:18080 で固定
-# - 初回ログイン情報: user@example.com / password（realm-export.json で投入）
-spring:
-  config:
-    activate:
-      on-profile: local-keycloak
-
-raditomo:
   oauth:
     google:
       client-id: raditomo-app
       client-secret: test-secret
       redirect-uri: http://localhost:5173/auth/callback
       authorization-uri: http://localhost:18080/realms/raditomo/protocol/openid-connect/auth
-      token-uri: http://keycloak:8080/realms/raditomo/protocol/openid-connect/token
-      jwks-uri: http://keycloak:8080/realms/raditomo/protocol/openid-connect/certs
+      token-uri: http://localhost:18080/realms/raditomo/protocol/openid-connect/token
+      jwks-uri: http://localhost:18080/realms/raditomo/protocol/openid-connect/certs
       issuer: http://localhost:18080/realms/raditomo
+
+logging:
+  level:
+    com.raditomo: DEBUG
 
 ---
 spring:

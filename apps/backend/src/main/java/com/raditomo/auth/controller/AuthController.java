@@ -7,6 +7,7 @@ import com.raditomo.auth.service.AuthService;
 import com.raditomo.user.entity.User;
 import com.raditomo.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
@@ -55,11 +57,19 @@ public class AuthController {
 
     @ExceptionHandler(AuthService.InvalidStateException.class)
     public ResponseEntity<String> invalidState(AuthService.InvalidStateException e) {
+        log.warn("OAuth callback rejected: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<String> accessDenied(AccessDeniedException e) {
+        log.warn("OAuth callback access denied: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<String> unexpected(RuntimeException e) {
+        log.error("OAuth callback unexpected error", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
     }
 }
