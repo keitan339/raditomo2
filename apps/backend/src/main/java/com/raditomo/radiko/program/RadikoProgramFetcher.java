@@ -4,6 +4,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.raditomo.common.time.JstTimes;
 import com.raditomo.program.entity.Program;
 import com.raditomo.radiko.RadikoProperties;
+import com.raditomo.station.entity.Station;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,7 +59,8 @@ public class RadikoProgramFetcher {
         log.info("Fetched program XML: area={} date={} stations={} programs={}",
                 areaId, broadcastDate,
                 parsed.stationsParsed, parsed.programs.size());
-        return new FetchResult(savedFile, parsed.stationsParsed, parsed.stationsFailed, parsed.programs);
+        return new FetchResult(savedFile, parsed.stationsParsed, parsed.stationsFailed,
+                parsed.stations, parsed.programs);
     }
 
     private String httpGet(String url) {
@@ -100,19 +102,28 @@ public class RadikoProgramFetcher {
             throw new RadikoProgramFetchException("Failed to parse program XML", e);
         }
         if (root.stations == null || root.stations.stationList == null) {
-            return new ParseResult(0, 0, List.of());
+            return new ParseResult(0, 0, List.of(), List.of());
         }
 
+        String areaId = root.stations.areaId;
+        List<Station> stations = new ArrayList<>();
         List<Program> programs = new ArrayList<>();
         int success = 0, failed = 0;
+        int order = 0;
         for (ProgramXml.Station station : root.stations.stationList) {
             try {
-                if (station.progs == null || station.progs.progList == null) {
-                    success++;
-                    continue;
-                }
-                for (ProgramXml.Prog prog : station.progs.progList) {
-                    programs.add(toEntity(station.id, prog));
+                stations.add(Station.builder()
+                        .id(station.id)
+                        .areaId(areaId)
+                        .name(station.name)
+                        .asciiName(station.asciiName)
+                        .logoUrl(station.logo)
+                        .sortOrder(order++)
+                        .build());
+                if (station.progs != null && station.progs.progList != null) {
+                    for (ProgramXml.Prog prog : station.progs.progList) {
+                        programs.add(toEntity(station.id, prog));
+                    }
                 }
                 success++;
             } catch (RuntimeException e) {
@@ -120,7 +131,7 @@ public class RadikoProgramFetcher {
                 log.warn("Skipping station due to parse error: id={} cause={}", station.id, e.toString());
             }
         }
-        return new ParseResult(success, failed, programs);
+        return new ParseResult(success, failed, stations, programs);
     }
 
     private Program toEntity(String stationId, ProgramXml.Prog prog) {
@@ -141,9 +152,10 @@ public class RadikoProgramFetcher {
                 .build();
     }
 
-    public record FetchResult(Path savedFile, int stationsParsed, int stationsFailed, List<Program> programs) {}
+    public record FetchResult(Path savedFile, int stationsParsed, int stationsFailed,
+                              List<Station> stations, List<Program> programs) {}
 
-    record ParseResult(int stationsParsed, int stationsFailed, List<Program> programs) {}
+    record ParseResult(int stationsParsed, int stationsFailed, List<Station> stations, List<Program> programs) {}
 
     public static class RadikoProgramFetchException extends RuntimeException {
         public RadikoProgramFetchException(String msg) { super(msg); }

@@ -57,6 +57,8 @@ class RadikoProgramFetcherTest {
         RadikoProgramFetcher.ParseResult result = fetcher.parse(xml);
         assertThat(result.stationsParsed()).isEqualTo(2);
         assertThat(result.stationsFailed()).isEqualTo(0);
+        assertThat(result.stations()).extracting("id").containsExactly("TBS", "QRR");
+        assertThat(result.stations()).extracting("areaId").containsOnly("JP13");
         assertThat(result.programs()).hasSize(3);
 
         Program first = result.programs().get(0);

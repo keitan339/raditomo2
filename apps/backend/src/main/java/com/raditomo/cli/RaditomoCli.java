@@ -10,8 +10,10 @@ import picocli.CommandLine.Command;
         version = "raditomo 0.1.0",
         description = "Raditomo CLI",
         subcommands = {
-                UsersCommand.class
-                // download / download-programs / download-audio はフェーズ4で追加
+                UsersCommand.class,
+                DownloadCommands.DownloadCommand.class,
+                DownloadCommands.DownloadProgramsCommand.class,
+                DownloadCommands.DownloadAudioCommand.class
         }
 )
 public class RaditomoCli implements Runnable {

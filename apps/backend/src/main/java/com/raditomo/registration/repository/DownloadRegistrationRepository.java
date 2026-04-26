@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface DownloadRegistrationRepository extends JpaRepository<DownloadRegistration, Long> {
     List<DownloadRegistration> findByUserIdAndStatus(Long userId, RegistrationStatus status);
+
+    List<DownloadRegistration> findByStatus(RegistrationStatus status);
 }
