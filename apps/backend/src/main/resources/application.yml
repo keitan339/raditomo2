@@ -54,8 +54,19 @@ raditomo:
       client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
       client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
       redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8080/api/auth/google/callback}
+      authorization-uri: ${GOOGLE_OAUTH_AUTHORIZATION_URI:https://accounts.google.com/o/oauth2/v2/auth}
+      token-uri: ${GOOGLE_OAUTH_TOKEN_URI:https://oauth2.googleapis.com/token}
+      jwks-uri: ${GOOGLE_OAUTH_JWKS_URI:https://www.googleapis.com/oauth2/v3/certs}
+      issuer: ${GOOGLE_OAUTH_ISSUER:https://accounts.google.com}
   radiko:
     download-concurrency: ${RADIKO_DOWNLOAD_CONCURRENCY:8}
+    base-url: ${RADIKO_BASE_URL:https://radiko.jp}
+    # rec_radiko_ts と互換のデバイスレベル共通鍵。失効時は更新が必要。
+    auth-key: ${RADIKO_AUTH_KEY:bcd151073c03b352e1ef2fd66c32209da9ca0afa}
+    auth-cache-hours: ${RADIKO_AUTH_CACHE_HOURS:3}
+    http-connect-timeout-seconds: 10
+    http-read-timeout-seconds: 30
+    chunk-retry: 3
   app:
     base-url: ${APP_BASE_URL:http://localhost:8080}
     timezone: Asia/Tokyo
