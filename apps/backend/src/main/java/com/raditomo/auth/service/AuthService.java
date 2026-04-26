@@ -44,6 +44,23 @@ public class AuthService {
             throw new InvalidStateException();
         }
         GoogleIdToken idToken = googleOAuthService.exchangeCodeAndVerify(code);
+        return finalizeLogin(idToken);
+    }
+
+    /**
+     * GIS（Google Identity Services）から直接渡された ID Token でログイン処理を行う。
+     * 認可コードフローは経由しない。state も持ち込まない（GIS が CSRF 対策を担う）。
+     */
+    @Transactional
+    public LoginResult handleIdTokenLogin(String idToken) {
+        if (idToken == null || idToken.isBlank()) {
+            throw new AccessDeniedException("id_token missing");
+        }
+        GoogleIdToken token = googleOAuthService.verifyIdToken(idToken);
+        return finalizeLogin(token);
+    }
+
+    private LoginResult finalizeLogin(GoogleIdToken idToken) {
         if (!idToken.emailVerified()) {
             throw new AccessDeniedException("Email not verified");
         }

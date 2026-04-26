@@ -13,6 +13,13 @@ export interface UserResponse {
   pictureUrl: string | null;
 }
 
+export type Idp = 'google' | 'keycloak' | 'custom';
+
+export interface AuthConfigResponse {
+  idp: Idp;
+  googleClientId: string | null;
+}
+
 export interface LoginUrlResponse {
   authUrl: string;
   state: string;

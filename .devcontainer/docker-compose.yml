@@ -59,7 +59,7 @@ services:
   # - id_token の iss は KC_HOSTNAME で固定
   keycloak:
     build:
-      context: ../infra/keycloak
+      context: ./keycloak
       dockerfile: Dockerfile
     command: ["start-dev", "--import-realm", "--http-port=18080"]
     environment:

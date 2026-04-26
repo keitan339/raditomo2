@@ -1,9 +1,12 @@
 package com.raditomo.auth.controller;
 
+import com.raditomo.auth.dto.AuthDtos.AuthConfigResponse;
+import com.raditomo.auth.dto.AuthDtos.IdTokenLoginRequest;
 import com.raditomo.auth.dto.AuthDtos.LoginResponse;
 import com.raditomo.auth.dto.AuthDtos.LoginUrlResponse;
 import com.raditomo.auth.dto.AuthDtos.UserResponse;
 import com.raditomo.auth.service.AuthService;
+import com.raditomo.auth.service.GoogleOAuthService;
 import com.raditomo.user.entity.User;
 import com.raditomo.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +24,22 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final GoogleOAuthService googleOAuthService;
     private final UserRepository userRepository;
+
+    @GetMapping("/config")
+    public AuthConfigResponse config() {
+        GoogleOAuthService.IdpKind kind = googleOAuthService.detectIdp();
+        String idp = switch (kind) {
+            case GOOGLE -> "google";
+            case KEYCLOAK -> "keycloak";
+            case CUSTOM -> "custom";
+        };
+        String clientId = kind == GoogleOAuthService.IdpKind.GOOGLE
+                ? googleOAuthService.clientId()
+                : null;
+        return new AuthConfigResponse(idp, clientId);
+    }
 
     @GetMapping("/google/login-url")
     public LoginUrlResponse loginUrl() {
@@ -32,6 +50,16 @@ public class AuthController {
     @GetMapping("/google/callback")
     public LoginResponse callback(@RequestParam String code, @RequestParam String state) {
         AuthService.LoginResult result = authService.handleCallback(code, state);
+        return toLoginResponse(result);
+    }
+
+    @PostMapping("/google/id-token")
+    public LoginResponse idTokenLogin(@RequestBody IdTokenLoginRequest req) {
+        AuthService.LoginResult result = authService.handleIdTokenLogin(req.idToken());
+        return toLoginResponse(result);
+    }
+
+    private LoginResponse toLoginResponse(AuthService.LoginResult result) {
         User u = result.user();
         return new LoginResponse(
                 result.accessToken(),

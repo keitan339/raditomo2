@@ -6,7 +6,7 @@ import App from './App';
 import { theme } from './theme/theme';
 
 function renderWith(initialPath = '/') {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
@@ -25,7 +25,9 @@ describe('App', () => {
 
   it('redirects unauthenticated users to login', () => {
     renderWith('/');
-    expect(screen.getByText('Google でログイン')).toBeInTheDocument();
+    // ログイン画面のヘッダー文言で判定（実際のボタンは /api/auth/config のレスポンス
+    // により Google / Keycloak / custom で切り替わるため）
+    expect(screen.getByText('Raditomo')).toBeInTheDocument();
   });
 
   it('shows app name on login page', () => {

@@ -31,8 +31,10 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
+                    "/api/auth/config",
                     "/api/auth/google/login-url",
                     "/api/auth/google/callback",
+                    "/api/auth/google/id-token",
                     "/api/auth/logout",
                     "/api/health"
                 ).permitAll()

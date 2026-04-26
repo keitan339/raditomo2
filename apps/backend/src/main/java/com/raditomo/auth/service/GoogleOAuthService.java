@@ -57,6 +57,33 @@ public class GoogleOAuthService {
         return verifyAndExtract(idToken);
     }
 
+    /**
+     * GIS（Google Identity Services）から直接渡された ID Token を検証する。
+     * 認可コードフローを介さない（Google ボタンで取得した id_token を POST する経路）。
+     */
+    public GoogleIdToken verifyIdToken(String idToken) {
+        return verifyAndExtract(idToken);
+    }
+
+    /** 設定値の authorization-uri / issuer から IdP 種別を推測する（フロントの分岐用）。 */
+    public IdpKind detectIdp() {
+        String uri = props.authorizationUri() == null ? "" : props.authorizationUri();
+        String issuer = props.issuer() == null ? "" : props.issuer();
+        if (uri.contains("accounts.google.com") || issuer.contains("accounts.google.com")) {
+            return IdpKind.GOOGLE;
+        }
+        if (uri.contains("/realms/") || issuer.contains("/realms/")) {
+            return IdpKind.KEYCLOAK;
+        }
+        return IdpKind.CUSTOM;
+    }
+
+    public String clientId() {
+        return props.clientId();
+    }
+
+    public enum IdpKind { GOOGLE, KEYCLOAK, CUSTOM }
+
     private String exchangeCode(String code) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("code", code);
