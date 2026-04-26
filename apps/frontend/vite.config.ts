@@ -11,11 +11,18 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+    },
+    // DevContainer / Docker など inotify watcher 上限の低い環境向けにポーリングへ切替
+    watch: {
+      usePolling: true,
+      interval: 500,
+      ignored: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/playwright-report/**', '**/e2e/**'],
     },
   },
   build: {
