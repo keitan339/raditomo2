@@ -1,7 +1,10 @@
 package com.raditomo.program.repository;
 
 import com.raditomo.program.entity.Program;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -19,4 +22,29 @@ public interface ProgramRepository extends JpaRepository<Program, Long> {
      */
     Optional<Program> findFirstByStationIdAndBroadcastDateAndTitleOrderByBroadcastStartAtAsc(
             String stationId, LocalDate broadcastDate, String title);
+
+    /**
+     * エリア・日付指定で全番組を放送局順・放送開始順で取得。
+     */
+    @Query("""
+            SELECT p FROM Program p
+            JOIN com.raditomo.station.entity.Station s ON s.id = p.stationId
+            WHERE s.areaId = :areaId AND p.broadcastDate = :date
+            ORDER BY s.sortOrder ASC, p.broadcastStartAt ASC
+            """)
+    List<Program> findByAreaAndDate(@Param("areaId") String areaId, @Param("date") LocalDate date);
+
+    /**
+     * タイトル / 出演者の部分一致検索。
+     */
+    @Query("""
+            SELECT p FROM Program p
+            JOIN com.raditomo.station.entity.Station s ON s.id = p.stationId
+            WHERE s.areaId = :areaId
+              AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR LOWER(COALESCE(p.performers, '')) LIKE LOWER(CONCAT('%', :q, '%')))
+            ORDER BY p.broadcastStartAt DESC
+            """)
+    List<Program> searchByAreaAndKeyword(
+            @Param("areaId") String areaId, @Param("q") String q, Pageable pageable);
 }
