@@ -1,175 +1,203 @@
-# 設計フェーズへの引き継ぎドキュメント
+# 実装フェーズへの引き継ぎドキュメント
+
+## このドキュメントの位置付け
+
+設計フェーズ → 実装フェーズの橋渡し文書。実装着手時に読むべき情報を集約する。
+- 要件定義 → 設計フェーズの引き継ぎは `docs/archive/handover.md` を参照
+- 設計の最新状態は `docs/design/` 配下のドキュメントが正
 
 ## プロジェクト概要
 
-ラジコ（radiko）のタイムフリー番組をダウンロードし、録音ファイルをHLSストリーミングで再生するWebアプリケーション。個人利用を想定し、自宅サーバーで稼働する。
+ラジコ（radiko）のタイムフリー番組をダウンロードし、HLSストリーミングで再生するWebアプリケーション。個人利用、自宅サーバー稼働、Docker Compose 3コンテナ構成。
 
-## 要件定義の成果物
+- 公開ドメイン: `raditomo.hidenv.com`
+- ウォーターフォール開発: 要件定義完了 → 設計完了 → **次は実装**
 
+---
+
+## 成果物一覧
+
+### 要件定義（凍結）
 | ファイル | 内容 |
 |---------|------|
-| `docs/functional-requirements.md` | 機能要件定義（F1〜F5 + 将来対応） |
-| `docs/technical-requirements.md` | 技術要件定義（システム構成・インフラ・非機能要件・技術スタック） |
+| `docs/requirements/01-functional-requirements.md` | 機能要件（F1〜F5 + 将来対応） |
+| `docs/requirements/02-technical-requirements.md` | 技術要件（システム構成・非機能・技術スタック） |
 
-## システム全体像
-
-```
-[ブラウザ (PC/スマホ)]
-        │ HTTPS
-        ▼
-   [Nginx コンテナ]
-   ├─ SSL/TLS終端
-   ├─ React静的ファイル配信
-   ├─ /api/* → Spring Boot へプロキシ
-   └─ HLSファイル配信
-        │
-        ▼
-[App コンテナ (Spring Boot)]
-   ├─ バックエンドAPI（C1向け）
-   ├─ バッチ処理
-   │   ├─ F4: 番組表取得（毎朝5:30）
-   │   └─ F2: タイムフリーダウンロード（F4完了後）
-   ├─ Spring Scheduler（定時自動実行）
-   └─ CLI（手動実行）
-        │
-        ▼
-  [DB コンテナ (PostgreSQL)]
-
-  [ホストボリューム]
-   ├─ MP3ファイル
-   ├─ HLSセグメント
-   └─ 生XML
-```
-
-## 機能一覧と相互関係
-
-### F1: ダウンロード登録（Web SPA）
-- DB上の番組表を表示し、ダウンロード対象を登録する
-- 「一回限り」「毎週」の2種類の登録方式
-- ダウンロード履歴の閲覧・削除、登録一覧の管理
-- Web画面からF4・F2の手動実行
-
-### F2: タイムフリーダウンロード（バッチ）
-- F4完了後に自動実行。CLIでも手動実行可能
-- ダウンロード対象は動的照合（登録情報 × 番組表 × 履歴）で決定。予約レコードは生成しない
-- ラジコからMP3ダウンロード → ffmpegでHLS変換
-- 失敗時は即時3回リトライ。失敗・期限切れはバッジ＋メール通知
-
-### F3: 録音ファイルの再生（Web SPA）
-- 番組名ごとにグルーピング表示
-- HLSストリーミング再生、レジューム再生（端末間共有）
-- 録音ファイルの削除機能
-
-### F4: 番組表取得バッチ
-- 毎朝5:30に全範囲（過去1週間＋今日以降）を取得・更新
-- 生XMLも保存（パースエラー調査用）
-- 部分失敗でもF2は実行する
-
-### F5: 認証
-- Google OAuth 2.0 + JWT
-- 許可リスト制（CLIまたはDB直接操作で管理）
-
-### 機能間データフロー
-
-```
-F4 (番組表取得) ──→ DB (番組表)
-                          │
-F1 (登録) ──→ DB (登録情報) │
-                          ▼
-                    F2 (ダウンロード)
-                    ├── DB (履歴) と照合
-                    ├── ラジコAPI からダウンロード
-                    ├── MP3 → HLS変換
-                    └── DB (履歴) に記録
-                          │
-                          ▼
-                    F3 (再生)
-                    ├── HLSストリーミング
-                    └── DB (再生位置) に保存
-```
-
-## 技術スタック
-
-| レイヤー | 技術 |
+### 設計（凍結。仕様変更が必要なら本ドキュメントを更新）
+| ファイル | 内容 |
 |---------|------|
-| フロントエンド | React (Vite) |
-| バックエンド | Java (Spring Boot) |
-| データベース | PostgreSQL |
-| Webサーバー | Nginx |
-| コンテナ | Docker Compose (3コンテナ: Nginx / App / DB) |
-| 認証 | Google OAuth 2.0 + JWT |
-| スケジューラー | Spring Scheduler + CLI |
-| 音声処理 | ffmpeg（HLS変換、ラジコからのダウンロード） |
-| メール通知 | Gmail SMTP |
+| `docs/design/00-design-overview.md` | 設計全体目次・主要決定事項一覧 |
+| `docs/design/01-database-design.md` | ER図・テーブル定義・インデックス・動的照合クエリ例 |
+| `docs/design/02-api-design.md` | REST APIエンドポイント・認証フロー |
+| `docs/design/03-radiko-integration.md` | ラジコAPI連携（auth1/auth2、番組表、チャンク並列DL） |
+| `docs/design/04-frontend-design.md` | 画面構成・MUI・レスポンシブ・HLSプレイヤー |
+| `docs/design/05-batch-file-notification.md` | スケジューラ（5:30）・F4→F2連鎖・ファイル保存・Gmail通知 |
+| `docs/design/06-docker-security.md` | Docker構成・Nginx・JWT・HLS配信認証 |
+| `docs/design/07-test-strategy.md` | UT/IT/ST 3層、ツール、カバレッジ80%、CI |
 
-## 設計フェーズで決めるべきこと
+### 過去フェーズ
+| ファイル | 内容 |
+|---------|------|
+| `docs/archive/handover.md` | 要件→設計フェーズの引き継ぎ |
 
-### 優先度高（アーキテクチャに影響）
+---
 
-1. **DB設計（ER図・テーブル定義）**
-   - 番組表、ダウンロード登録、ダウンロード履歴、再生位置、ユーザー、エリア・放送局設定
-   - 「毎週」登録の曜日検索、動的照合のクエリ効率を考慮
+## 主要技術選定（再掲）
 
-2. **API設計（エンドポイント一覧）**
-   - C1（SPA）向けREST API
-   - バッチ手動実行API（非同期実行）
-   - 認証フロー（Google OAuth 2.0 → JWT発行）
+| カテゴリ | 選定 |
+|---------|------|
+| Backend | Java 21 / Spring Boot / Maven |
+| DB | PostgreSQL 16 / Flyway |
+| Frontend | React 18 + TypeScript + Vite + **MUI v5** + TanStack Query + Zustand |
+| HLS再生 | hls.js + Safari ネイティブ |
+| Container | Docker Compose（Nginx / App / DB） |
+| Auth | Google OAuth 2.0 + JWT (HS256, 24h, リフレッシュトークンなし, SessionStorage) |
+| 通知 | Gmail SMTP（アプリパスワード方式） |
+| バッチ | Spring Scheduler（cron `0 30 5 * * *` Asia/Tokyo） |
+| CLI | Picocli（ホストラッパー `./raditomo`） |
+| ID3 | mp3agic（TLEN フレームに放送時間ミリ秒） |
+| HTTP（ラジコ） | Java 21 標準 HttpClient + Virtual Threads |
+| MP3 | 128 kbps CBR |
+| HLS変換 | ffmpeg |
+| ログ | Logback（`app.log` / `batch.log` 分離、100MB/30日） |
+| メール | `[Raditomo]` プレフィックス |
+| HLS配信 | Nginx auth_request + 署名付きパス |
+| テスト | JUnit5+Mockito+AssertJ / Vitest+RTL+MSW / Testcontainers / GreenMail / mock-oauth2-server / WireMock / Playwright |
+| CI | GitHub Actions |
+| カバレッジ | JaCoCo / Vitest coverage、行 80% 以上で CI 失敗 |
 
-3. **ラジコAPIの技術検証**
-   - 2026年1月の仕様変更（smartstream.ne.jp、チャンク分割取得）への対応
-   - チャンク並列取得による高速ダウンロードの実装方法
-   - 参考: [rec_radiko_ts](https://github.com/uru2/rec_radiko_ts)
-   - auth1/auth2認証フローの実装
-   - 番組表XMLのパース仕様
+---
 
-4. **フロントエンド画面設計**
-   - 番組表表示（25時制、エリア・放送局切替、日付切替、過去/未来の視覚的区別）
-   - 登録・履歴・再生・設定の画面構成
-   - HLSプレイヤーの実装方式
+## 推奨実装順序
 
-### 優先度中（実装方針）
+依存関係を踏まえ、フェーズ単位で段階的に進める。
 
-5. **バッチ処理の詳細設計**
-   - F4→F2の起動連携（Spring内部イベント or プロセス間通信）
-   - CLI実行時のオプション解析
-   - Web画面からの非同期実行の仕組み（実行状態の管理・表示）
+### フェーズ1: プロジェクトスケルトン
+1. Maven プロジェクト初期化（`pom.xml`、依存関係）
+2. Vite + React + TypeScript プロジェクト初期化（`package.json`）
+3. Docker Compose 雛形（`docker-compose.yml`、`.env.example`）
+4. CI 雛形（`.github/workflows/ci.yml`）
+5. Flyway 初期マイグレーション（`V1__initial_schema.sql`、`V2__seed_master_data.sql`）
 
-6. **ファイル保存の詳細**
-   - MP3/HLS/XMLの保存パス設計（設定ファイル or 環境変数）
-   - ID3タグの付与方法（Javaライブラリ選定）
+### フェーズ2: 基盤レイヤー
+6. JPA Entity / Repository（全テーブル）
+7. Google OAuth + JWT 認証（`/api/auth/*`）
+8. mock-oauth2-server を IT で使えるようにする
+9. ユーザー許可リスト CLI（`./raditomo users add/remove/list`）
+10. SecurityConfig（認証必須エンドポイント設定）
 
-7. **通知の詳細設計**
-   - Gmail SMTP設定（OAuth 2.0 or アプリパスワード）
-   - メールテンプレート
-   - バッジ表示の仕組み（ポーリング or WebSocket）
+### フェーズ3: ラジコ連携
+11. RadikoAuthService（auth1/auth2）
+12. RadikoProgramFetcher（番組表XML取得・パース）
+13. WireMock を使ったラジコ IT セットアップ
+14. RadikoTimefreeDownloader（チャンク並列DL）
+15. Mp3Encoder（ffmpeg 連結 → MP3）+ ID3タグ付与
+16. HlsConverter（MP3 → HLS）
 
-### 優先度低（設計の仕上げ）
+### フェーズ4: バッチ
+17. F4 番組表取得バッチ + Spring Scheduler（5:30）
+18. F2 タイムフリーDLバッチ + 動的照合ロジック
+19. F4 → F2 連鎖（ApplicationEvent）
+20. 排他制御（`batch_executions` + SELECT FOR UPDATE）
+21. CLI サブコマンド（`download-programs` / `download-audio` / `download`）
+22. Web 経由バッチ起動API（`/api/batch/run`、@Async）
 
-8. **Docker構成の詳細**
-   - Dockerfile、docker-compose.yml
-   - ボリュームマウント設計
-   - Nginx設定ファイル
+### フェーズ5: 通知
+23. Gmail SMTP 送信（spring-boot-starter-mail）
+24. メールテンプレート（失敗・期限切れ）
+25. 失敗・期限切れバッジ API（`/api/histories/badge`）
+26. GreenMail を使ったメール IT
 
-9. **セキュリティ設計**
-   - JWT のライフサイクル（有効期限、リフレッシュ）
-   - CORS設定
-   - CSRFトークン
+### フェーズ6: フロントエンド
+27. MUI テーマ設定（日本語フォント Noto Sans JP）
+28. 認証まわり（Login画面、認証ガード、SessionStorage）
+29. 番組表画面（PC グリッド / スマホ リスト切替、登録モーダル）
+30. 登録一覧画面・履歴画面・設定画面
+31. ライブラリ画面・再生画面（hls.js）
+32. レジューム再生（5秒間隔保存）
+33. バッジ表示（30秒ポーリング）
+34. バッチ手動実行UI
 
-## 要件定義で意識的に決めた設計判断
+### フェーズ7: 統合・最終化
+35. Nginx 設定（HTTPS、HLS配信、auth_request）
+36. HLS 署名付きパスの実装
+37. Playwright Browser IT（主要シナリオ）
+38. ST スクリプト（`scripts/st/*`）
+39. Let's Encrypt 証明書取得（HTTP-01）
+40. 本番デプロイ手順書
 
-以下は要件定義段階で検討し、意図的に決定した事項。設計時に再検討する場合は背景を踏まえること。
+各フェーズで「UT を書く → 実装 → IT を書く → 通る」を繰り返す。
 
-| 判断 | 決定内容 | 背景 |
-|------|----------|------|
-| ダウンロード対象の判定方式 | 動的照合（予約レコードなし） | 登録情報 × 番組表 × 履歴で毎回照合。予約レコード方式はF4失敗時の整合性が複雑になるため不採用 |
-| F4→F2の連携 | F4完了トリガー（時刻ベースではない） | F4が遅延しても確実にF2が実行される。部分失敗でもF2は実行する |
-| F4の取得範囲 | 毎回全範囲取得 | 差分管理の複雑さを回避し、過去の失敗を自然に補完する |
-| APIとバッチのコンテナ | 同一コンテナ | 個人利用でシンプルに運用するため |
-| F3ファイル削除と履歴 | ファイル削除しても履歴は保持、再DL対象にしない | 削除は主に期限切れ録音の整理。再DLが必要なら別途履歴を削除する運用 |
-| 高速ダウンロード | チャンク並列取得（必須要件） | 等倍速では運用に支障があるため |
+---
 
-## 開発環境
+## 実装フェーズで決めるべきこと
 
-開発コンテナ（`.devcontainer/`）に以下がセットアップ済み:
+設計では確定していない、実装着手時に決める項目。
+
+### 優先度: 高
+- [ ] **パッケージ構造**: `com.raditomo.<module>` の具体的なモジュール割り（auth, radiko, batch, program, registration, history, recording, common など）
+- [ ] **ラジコ共通鍵の取得方針**: rec_radiko_ts と同じ鍵をハードコードする方法。鍵が無効化された場合のフォールバック
+- [ ] **チャンク並列度の実測**: 8並列で 403/429 が出ないか確認、必要なら調整
+- [ ] **ffmpeg コマンドの最終形**: AAC連結→MP3、HLS変換のオプション（ノイズ・音質を実音源で確認）
+- [ ] **HLS 署名付きパスの具体実装**: `/hls/<token>/<userId>/<title>/<date>/playlist.m3u8` の token フォーマットとplaylist内のセグメントURL書き換え方式
+
+### 優先度: 中
+- [ ] **CSRF トークン実装の必要性**: SessionStorage + Bearer 方式のため不要だが、念のため確認
+- [ ] **DBコネクションプール設定**（HikariCP デフォルト値で良いか）
+- [ ] **Spring `@Async` のスレッドプール設定**（`batchTaskExecutor` のサイズ）
+- [ ] **エラー画面・グローバルエラーハンドラ**（Frontend）
+- [ ] **i18n の必要性**: 日本語固定で十分か（要件は日本語のみ）→ おそらく不要
+- [ ] **ログイン保持の挙動微調整**: タブを開いて初回アクセス時の Google 自動再認証フローのUX
+
+### 優先度: 低
+- [ ] **アプリのアイコン・ロゴ**
+- [ ] **メールテンプレートの装飾**（HTML メール化するかプレーンテキストか）
+- [ ] **メトリクス収集**（Spring Boot Actuator の有効化範囲）
+- [ ] **healthcheck エンドポイント**（`/api/health`）
+
+---
+
+## 設計時に意識的に決めた判断（背景）
+
+実装時に再検討する場合は背景を踏まえること。
+
+| 判断 | 決定 | 背景 |
+|------|------|------|
+| F2 並列処理の単位 | **番組単位は直列**、チャンクのみ並列 | レート制限・エラー処理のシンプルさ |
+| 毎週マッチング手順4 | 番組名不一致でも必ずDL | 番組終了・差替え検知のため |
+| 認証方式 | アクセストークンのみ（リフレッシュなし） | ブラウザセッション中のみログイン保持。毎回認証 |
+| トークン保存場所 | SessionStorage | XSS耐性、タブ単位のセッション分離 |
+| Gmail SMTP | アプリパスワード方式 | 個人利用、OAuth2 設定の煩雑さ回避 |
+| バッジ更新 | 30秒ポーリング | 個人利用・更新頻度低、WebSocket は過剰 |
+| 番組表UI | レスポンシブ自動切替（PC=グリッド / スマホ=リスト） | PC/スマホ両対応 |
+| F4 取得方式 | エリア単位API（全局1リクエスト） | リクエスト数削減 |
+| F4→F2 連鎖 | ApplicationEvent + AFTER_COMMIT | F4 部分失敗時もF2が動く |
+| バッチ排他制御 | `batch_executions` + SELECT FOR UPDATE | DBで一元管理、in-memory ロックは避ける |
+| ファイル削除と履歴 | 履歴は残す（`file_deleted_at` セット） | 削除済みを再DL対象にしない |
+| カバレッジ目標 | UT のみ 80% | IT/ST はシナリオで担保 |
+| ブラウザE2E | IT 層に配置 | 独自サービス（mock-oauth等）で完結させるため |
+| ST | 半自動スクリプト主体 | リリース前スモーク用途 |
+
+---
+
+## 開発環境の現状
+
+DevContainer（`.devcontainer/`）にセットアップ済み:
 - Node.js 22 / Java 21 / Maven 3.9 / ffmpeg / Docker / Playwright
 - タイムゾーン: JST (Asia/Tokyo)
+
+実装フェーズで追加が必要なもの:
+- IT 用 `docker-compose.test.yml`（mock-oauth2-server など）
+- 開発用 `.env`（リポジトリ除外、`.env.example` をコミット）
+- 本番用 SSL 証明書取得手順（Let's Encrypt + HTTP-01、Value Domain でDNS設定）
+
+---
+
+## 実装着手前のチェックリスト
+
+- [ ] Google Cloud Console で OAuth 2.0 クライアント作成（リダイレクトURI: `https://raditomo.hidenv.com/api/auth/google/callback`）
+- [ ] Gmail アプリパスワード発行（送信元アカウント）
+- [ ] Value Domain で `raditomo.hidenv.com` の A レコードを自宅サーバーグローバルIPへ
+- [ ] 自宅ルーターで 80/443 ポート転送
+- [ ] GitHub リポジトリ作成（プライベート想定）
+- [ ] GitHub Secrets に `.env` 相当の値を登録（CI 用）
