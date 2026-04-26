@@ -25,6 +25,7 @@
         <mp3agic.version>0.9.1</mp3agic.version>
         <jjwt.version>0.12.6</jjwt.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <docker-java.version>3.4.1</docker-java.version>
         <greenmail.version>2.1.0</greenmail.version>
         <mock-oauth2-server.version>2.1.10</mock-oauth2-server.version>
         <wiremock.version>3.10.0</wiremock.version>
@@ -125,6 +126,11 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Test (UT) -->
         <dependency>
@@ -149,6 +155,19 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Docker daemon API 1.40+ 対応のため明示指定 -->
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-core</artifactId>
+            <version>${docker-java.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-transport-zerodep</artifactId>
+            <version>${docker-java.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -176,6 +195,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
             </plugin>
 
             <!-- UT -->
@@ -186,6 +213,7 @@
                     <excludes>
                         <exclude>**/*IT.java</exclude>
                     </excludes>
+                    <argLine>@{surefireArgLine}</argLine>
                 </configuration>
             </plugin>
 
@@ -226,17 +254,20 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <includes>
-                        <include>**/*IT.java</include>
-                    </includes>
-                </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                        <configuration>
+                            <includes>
+                                <include>**/*IT.java</include>
+                            </includes>
+                            <!-- Testcontainers が使う docker-java は API 1.32 を既定値にしており
+                                 新しい Docker daemon (>=1.40 必須) と疎通できないため明示指定。 -->
+                            <argLine>-Dapi.version=1.43</argLine>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -252,6 +283,11 @@
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <!-- argLine プロパティを直接書き換えると Failsafe にまで影響するため
+                                 専用プロパティ名にして surefire のみで使う。 -->
+                            <propertyName>surefireArgLine</propertyName>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>report</id>

@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    # Testcontainers が動的に上書き（@DynamicPropertySource）
+    url: jdbc:tc:postgresql:16-alpine:///radiko_test
+    username: test
+    password: test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+
+raditomo:
+  jwt:
+    secret: test_secret_test_secret_test_secret_test_secret_must_be_long_enough_32chars
+    expiration-hours: 24
