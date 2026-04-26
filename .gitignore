@@ -1,0 +1,25 @@
+# Env / secrets
+.env
+.env.local
+.env.*.local
+.env.st
+
+# Runtime mount targets (data is gitignored, dirs kept via .gitkeep)
+data/recordings/*
+data/xml/*
+data/logs/*
+data/postgres/
+!data/recordings/.gitkeep
+!data/xml/.gitkeep
+!data/logs/.gitkeep
+
+# TLS 証明書（Let's Encrypt 取得後）
+infra/nginx/certs/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

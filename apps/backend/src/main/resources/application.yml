@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: raditomo
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/radiko}
+    username: ${SPRING_DATASOURCE_USERNAME:radiko}
+    password: ${SPRING_DATASOURCE_PASSWORD:radiko}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Tokyo
+        format_sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  jackson:
+    time-zone: Asia/Tokyo
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
+logging:
+  file:
+    path: ${LOG_BASE_PATH:./logs}
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+raditomo:
+  recordings-base-path: ${RECORDINGS_BASE_PATH:./data/recordings}
+  xml-base-path: ${XML_BASE_PATH:./data/xml}
+  jwt:
+    secret: ${JWT_SECRET:dev_secret_please_change_in_production_must_be_256bit_or_longer}
+    expiration-hours: 24
+  oauth:
+    google:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8080/api/auth/google/callback}
+  radiko:
+    download-concurrency: ${RADIKO_DOWNLOAD_CONCURRENCY:8}
+  app:
+    base-url: ${APP_BASE_URL:http://localhost:8080}
+    timezone: Asia/Tokyo
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    root: INFO
+    com.raditomo: INFO

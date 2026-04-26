@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Raditomo CLI ラッパー
+# Spring Boot アプリ（app コンテナ）に対して CLI サブコマンドを実行する。
+#
+# 使い方:
+#   ./raditomo download                          # F4 → F2 一括
+#   ./raditomo download-programs                 # F4 単体
+#   ./raditomo download-audio --date 20260424    # F2 単体
+#   ./raditomo users add user@example.com        # 許可リスト追加
+#   ./raditomo users remove user@example.com
+#   ./raditomo users list
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+cd "$SCRIPT_DIR"
+
+exec docker compose exec -T app java -jar /app/app.jar cli "$@"

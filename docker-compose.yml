@@ -1,0 +1,73 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+      - ./apps/frontend/dist:/usr/share/nginx/html:ro
+      - ./data/recordings:/data/recordings:ro
+    depends_on:
+      - app
+    networks:
+      - radiko-net
+    environment:
+      TZ: Asia/Tokyo
+
+  app:
+    build: ./apps/backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/radiko
+      SPRING_DATASOURCE_USERNAME: radiko
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      RECORDINGS_BASE_PATH: /data/recordings
+      XML_BASE_PATH: /data/xml
+      LOG_BASE_PATH: /var/log/app
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      RADIKO_DOWNLOAD_CONCURRENCY: ${RADIKO_DOWNLOAD_CONCURRENCY:-8}
+      APP_BASE_URL: ${APP_BASE_URL}
+      TZ: Asia/Tokyo
+    volumes:
+      - ./data/recordings:/data/recordings
+      - ./data/xml:/data/xml
+      - ./data/logs:/var/log/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - radiko-net
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: radiko
+      POSTGRES_USER: radiko
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - radiko-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radiko -d radiko"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  radiko-net:
+    driver: bridge
