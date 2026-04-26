@@ -76,6 +76,32 @@ raditomo:
     timezone: Asia/Tokyo
 
 ---
+# DevContainer 用ローカル開発プロファイル。
+# 起動: mvn -Dspring-boot.run.profiles=local spring-boot:run
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://db:5432/radiko_dev
+    username: postgres
+    password: password
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+raditomo:
+  scheduler:
+    enabled: false  # 5:30 cron はローカルでは止める
+  notification:
+    enabled: false  # SMTP 設定なしで起動できるように
+
+logging:
+  level:
+    com.raditomo: DEBUG
+
+---
 spring:
   config:
     activate:
