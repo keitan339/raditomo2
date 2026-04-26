@@ -195,7 +195,7 @@ DevContainer（`.devcontainer/`）にセットアップ済み:
 
 ## 実装着手前のチェックリスト
 
-- [ ] Google Cloud Console で OAuth 2.0 クライアント作成（リダイレクトURI: `https://raditomo.hidenv.com/api/auth/google/callback`）
+- [ ] Google Cloud Console で OAuth 2.0 クライアント作成（リダイレクトURI: `https://raditomo.hidenv.com/auth/callback` ← SPA のルートに渡す。フロントが code/state を受けて `/api/auth/google/callback` に中継する）
 - [ ] Gmail アプリパスワード発行（送信元アカウント）
 - [ ] Value Domain で `raditomo.hidenv.com` の A レコードを自宅サーバーグローバルIPへ
 - [ ] 自宅ルーターで 80/443 ポート転送

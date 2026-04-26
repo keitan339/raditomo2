@@ -35,7 +35,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
-      GOOGLE_OAUTH_REDIRECT_URI: https://raditomo.hidenv.com/api/auth/google/callback
+      GOOGLE_OAUTH_REDIRECT_URI: https://raditomo.hidenv.com/auth/callback
       SMTP_HOST: smtp.gmail.com
       SMTP_PORT: 587
       SMTP_USERNAME: ${SMTP_USERNAME}
@@ -290,7 +290,7 @@ JWT_SECRET=changeme_random_256bit_hex_string
 # Google OAuth
 GOOGLE_OAUTH_CLIENT_ID=...apps.googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET=...
-GOOGLE_OAUTH_REDIRECT_URI=https://raditomo.hidenv.com/api/auth/google/callback
+GOOGLE_OAUTH_REDIRECT_URI=https://raditomo.hidenv.com/auth/callback
 
 # SMTP
 SMTP_USERNAME=sender@gmail.com

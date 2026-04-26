@@ -38,7 +38,7 @@
 | メソッド | パス | 説明 |
 |---------|------|------|
 | GET | `/api/auth/google/login-url` | Google OAuth 認可URLを発行（state も発行） |
-| GET | `/api/auth/google/callback?code=&state=` | Googleからのリダイレクト受け口。許可リスト確認＋JWT発行 |
+| GET | `/api/auth/google/callback?code=&state=` | フロント `/auth/callback` 経由で呼ばれる。許可リスト確認＋JWT発行 |
 | POST | `/api/auth/logout` | クライアント側でトークン破棄（サーバー側は特になし） |
 | GET | `/api/auth/me` | 現在のユーザー情報取得 |
 

@@ -102,6 +102,30 @@ logging:
     com.raditomo: DEBUG
 
 ---
+# mock-oauth2-server をローカル localhost:18080 で立てた状態用のプロファイル。
+# 起動: ./scripts/dev/start-mock-oauth.sh --bg
+#       mvn -Dspring-boot.run.profiles=local,local-mock-oauth spring-boot:run
+#
+# redirect-uri は SPA（Vite dev サーバー）の /auth/callback を指す。
+# ブラウザはここに戻り、フロントが code/state を query から拾って
+# /api/auth/google/callback に GET する設計。
+spring:
+  config:
+    activate:
+      on-profile: local-mock-oauth
+
+raditomo:
+  oauth:
+    google:
+      client-id: test-client
+      client-secret: test-secret
+      redirect-uri: http://localhost:5173/auth/callback
+      authorization-uri: http://localhost:18080/default/authorize
+      token-uri: http://localhost:18080/default/token
+      jwks-uri: http://localhost:18080/default/jwks
+      issuer: http://localhost:18080/default
+
+---
 spring:
   config:
     activate:
