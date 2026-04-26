@@ -1,0 +1,76 @@
+services:
+  dev:
+    build:
+      context: ./dev
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: developer
+        USER_UID: ${HOST_UID}
+        USER_GID: ${HOST_GID}
+        GIT_USER_NAME: ${GIT_USER_NAME}
+        GIT_USER_EMAIL: ${GIT_USER_EMAIL}
+        DOCKER_GID: ${HOST_DOCKER_GID}
+
+        NODE_VERSION: 22.21.1
+        JAVA_VERSION: 21
+        MAVEN_VERSION: 3.9.12
+
+    user: ${HOST_UID}
+    volumes:
+      - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${SSH_AUTH_SOCK}:/tmp/ssh-agent.sock
+      - ${GIT_HUB_CONFIG_DIRECTORY}:/home/developer/.config/gh
+      - claude-data:/home/developer/.claude
+      - maven-data:/home/developer/.m2
+    privileged: true
+    depends_on:
+      - db
+
+  db:
+    image: postgres:18.3
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+
+  db-viewer:
+    image: dpage/pgadmin4:9.14
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=test@example.com
+      - PGADMIN_DEFAULT_PASSWORD=password
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+      - PGADMIN_LISTEN_PORT=8030
+    depends_on:
+      - db
+
+  smtp:
+    image: mailhog/mailhog:v1.0.1
+
+  # ローカル開発用 OIDC IdP（Keycloak）
+  # - realm-export.json をイメージに焼き込んで起動時に自動インポート（GUI 操作不要）
+  # - dev コンテナからは keycloak:8080 で到達
+  # - ブラウザは VS Code の port forward 経由で localhost:18080 に到達
+  # - id_token の iss は KC_HOSTNAME で固定（http://localhost:18080）
+  keycloak:
+    build:
+      context: ../infra/keycloak
+      dockerfile: Dockerfile
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:18080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "18080:8080"
+
+volumes:
+  claude-data:
+  maven-data:
+  pgadmin-data:
