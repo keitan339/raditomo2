@@ -46,6 +46,10 @@ logging:
 raditomo:
   recordings-base-path: ${RECORDINGS_BASE_PATH:./data/recordings}
   xml-base-path: ${XML_BASE_PATH:./data/xml}
+  notification:
+    enabled: ${NOTIFICATION_ENABLED:true}
+    from: ${NOTIFICATION_FROM:${SMTP_USERNAME:noreply@example.com}}
+    subject-prefix: "[Raditomo]"
   jwt:
     secret: ${JWT_SECRET:dev_secret_please_change_in_production_must_be_256bit_or_longer}
     expiration-hours: 24

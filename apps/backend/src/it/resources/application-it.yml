@@ -9,6 +9,13 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
 
 logging:
   level:

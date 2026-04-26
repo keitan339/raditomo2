@@ -36,16 +36,19 @@ class SchemaValidationIT extends AbstractIT {
 
     @Test
     void contextLoadsAndAllRepositoriesUsable() {
-        assertThat(userRepository.count()).isEqualTo(0L);
-        assertThat(userSettingsRepository.count()).isEqualTo(0L);
-        assertThat(userStationVisibilityRepository.count()).isEqualTo(0L);
-        assertThat(areaRepository.count()).isEqualTo(47L); // V2 で投入
-        assertThat(stationRepository.count()).isEqualTo(0L);
-        assertThat(programRepository.count()).isEqualTo(0L);
-        assertThat(rawProgramXmlRepository.count()).isEqualTo(0L);
-        assertThat(downloadRegistrationRepository.count()).isEqualTo(0L);
-        assertThat(downloadHistoryRepository.count()).isEqualTo(0L);
-        assertThat(playbackPositionRepository.count()).isEqualTo(0L);
-        assertThat(batchExecutionRepository.count()).isEqualTo(0L);
+        // Hibernate ddl-auto=validate がスキーマを通過したことの確認が主目的。
+        // count() がエラーなく実行できれば各エンティティとテーブルのマッピングは整合している。
+        // 他の IT との実行順依存を避けるため値の比較は最低限のみ（areas はマイグレーションで 47 件投入）。
+        userRepository.count();
+        userSettingsRepository.count();
+        userStationVisibilityRepository.count();
+        assertThat(areaRepository.count()).isEqualTo(47L);
+        stationRepository.count();
+        programRepository.count();
+        rawProgramXmlRepository.count();
+        downloadRegistrationRepository.count();
+        downloadHistoryRepository.count();
+        playbackPositionRepository.count();
+        batchExecutionRepository.count();
     }
 }

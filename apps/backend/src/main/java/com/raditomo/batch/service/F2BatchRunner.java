@@ -6,6 +6,7 @@ import com.raditomo.batch.entity.BatchExecution;
 import com.raditomo.batch.entity.BatchStatus;
 import com.raditomo.batch.entity.BatchType;
 import com.raditomo.batch.entity.TriggeredBy;
+import com.raditomo.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class F2BatchRunner {
     private final DownloadCandidateMatcher matcher;
     private final TimefreeDownloadService downloadService;
     private final BatchExecutionService batchExecutionService;
+    private final NotificationService notificationService;
 
     /**
      * 単独 F2 実行用エントリ。F4_F2 の連鎖は {@link #runForChain(String)} を使う。
@@ -60,7 +62,9 @@ public class F2BatchRunner {
         Filter f = parseOptions(optionsJson);
         List<DownloadCandidate> candidates = matcher.findCandidates(f.targetDate, f.force);
         log.info("F2(chained) candidates: {}", candidates.size());
-        return downloadService.processAll(candidates);
+        TimefreeDownloadService.DownloadSummary summary = downloadService.processAll(candidates);
+        notificationService.notifyAllPendingFailures();
+        return summary;
     }
 
     private BatchExecution runInside(BatchExecution exec, String optionsJson) {
@@ -69,6 +73,9 @@ public class F2BatchRunner {
             List<DownloadCandidate> candidates = matcher.findCandidates(f.targetDate, f.force);
             log.info("F2 candidates: {}", candidates.size());
             TimefreeDownloadService.DownloadSummary summary = downloadService.processAll(candidates);
+
+            // 失敗・期限切れがあればまとめて通知
+            notificationService.notifyAllPendingFailures();
 
             BatchStatus finalStatus = summary.failed() == 0 ? BatchStatus.SUCCESS : BatchStatus.PARTIAL_FAILURE;
             String summaryStr = String.format("success=%d failed=%d expired=%d total=%d",
