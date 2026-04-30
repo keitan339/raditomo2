@@ -122,8 +122,9 @@ public class ProgramController {
     /**
      * 与えた programs に対して、ユーザーの ACTIVE 登録から該当する RegistrationRef をマッピングする。
      * - ONCE: (station, broadcast_start_at) 完全一致
-     * - WEEKLY: (station, day_of_week, title) 一致 → 該当する全番組をマーク
-     *   （タイトル一致は登録時のタイトルとの完全一致。番組変更による不一致は登録一覧 / 履歴で別途検知する）
+     * - WEEKLY: 以下のいずれかで一致した場合「毎週」扱いとしてマーク
+     *     a) station + day_of_week + 番組名（完全一致）
+     *     b) station + day_of_week + 放送開始時刻（時分） — 番組名違いでも F2 手順4で強制DLされるため
      */
     private Map<Long, RegistrationRef> matchRegistrations(Long userId, List<Program> programs) {
         Map<Long, RegistrationRef> out = new HashMap<>();
@@ -144,7 +145,9 @@ public class ProgramController {
                     }
                 } else {
                     Short rDow = r.getDayOfWeek();
-                    if (rDow != null && rDow == pDow && p.getTitle().equals(r.getTitle())) {
+                    if (rDow == null || rDow != pDow) continue;
+                    if (p.getTitle().equals(r.getTitle())
+                            || sameTimeOfDay(p.getBroadcastStartAt(), r.getBroadcastStartAt())) {
                         out.put(p.getId(), new RegistrationRef(r.getId(), r.getRegistrationType()));
                         break;
                     }
@@ -152,6 +155,12 @@ public class ProgramController {
             }
         }
         return out;
+    }
+
+    private static boolean sameTimeOfDay(OffsetDateTime a, OffsetDateTime b) {
+        var ta = a.atZoneSameInstant(JstTimes.JST).toLocalTime();
+        var tb = b.atZoneSameInstant(JstTimes.JST).toLocalTime();
+        return ta.equals(tb);
     }
 
     private void require(Long userId) {
