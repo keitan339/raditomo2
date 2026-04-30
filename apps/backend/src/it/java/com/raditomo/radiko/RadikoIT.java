@@ -54,6 +54,23 @@ class RadikoIT extends AbstractIT {
         registry.add("raditomo.radiko.base-url", () -> WIREMOCK.baseUrl());
     }
 
+    /**
+     * 2026/01 仕様変更後: ダウンローダーは /v3/station/stream/pc_html5/{stationId}.xml から
+     * playlist_create_url を取得してそれをプレイリスト URL として使う。
+     * テストでは WireMock 自身を playlist_create_url として返す（後段の /v2/api/ts/playlist.m3u8.* スタブに繋ぐ）。
+     */
+    private void stubPlaylistCreateUrl(String stationId) {
+        String xml = "<radiko><stations><station id=\"" + stationId + "\">"
+                + "<url areafree=\"0\" timefree=\"1\">"
+                + "<playlist_create_url>" + WIREMOCK.baseUrl() + "/v2/api/ts/playlist.m3u8</playlist_create_url>"
+                + "</url></station></stations></radiko>";
+        WIREMOCK.stubFor(get(urlEqualTo("/v3/station/stream/pc_html5/" + stationId + ".xml"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/xml; charset=utf-8")
+                        .withBody(xml)));
+    }
+
     @BeforeEach
     void resetMocks() {
         WIREMOCK.resetAll();
@@ -120,6 +137,7 @@ class RadikoIT extends AbstractIT {
 
     @Test
     void downloader_concatenatesAllChunksInOrder(@TempDir Path tmp) {
+        stubPlaylistCreateUrl("TBS");
         String master = "#EXTM3U\n" + WIREMOCK.baseUrl() + "/media.m3u8\n";
         String media = """
                 #EXTM3U
@@ -161,6 +179,7 @@ class RadikoIT extends AbstractIT {
 
     @Test
     void downloader_retriesAndRecovers(@TempDir Path tmp) {
+        stubPlaylistCreateUrl("TBS");
         String master = "#EXTM3U\n" + WIREMOCK.baseUrl() + "/media.m3u8\n";
         String media = "#EXTM3U\n#EXTINF:5.0,\nseg-001.aac\n#EXT-X-ENDLIST\n";
         WIREMOCK.stubFor(get(urlMatching("/v2/api/ts/playlist\\.m3u8.*"))
