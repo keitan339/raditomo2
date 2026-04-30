@@ -21,6 +21,7 @@ public class RegistrationDtos {
     public record RegistrationResponse(
             Long id,
             String stationId,
+            String stationName,
             String title,
             OffsetDateTime broadcastStartAt,
             OffsetDateTime broadcastEndAt,
@@ -28,9 +29,11 @@ public class RegistrationDtos {
             RegistrationType registrationType,
             RegistrationStatus status
     ) {
-        public static RegistrationResponse from(DownloadRegistration r) {
+        public static RegistrationResponse from(DownloadRegistration r, String stationName) {
             return new RegistrationResponse(
-                    r.getId(), r.getStationId(), r.getTitle(),
+                    r.getId(), r.getStationId(),
+                    stationName != null ? stationName : r.getStationId(),
+                    r.getTitle(),
                     r.getBroadcastStartAt(), r.getBroadcastEndAt(),
                     r.getDayOfWeek(), r.getRegistrationType(), r.getStatus());
         }

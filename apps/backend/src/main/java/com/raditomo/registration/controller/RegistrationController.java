@@ -4,6 +4,7 @@ import com.raditomo.registration.dto.RegistrationDtos.CreateRegistrationRequest;
 import com.raditomo.registration.dto.RegistrationDtos.RegistrationResponse;
 import com.raditomo.registration.entity.RegistrationStatus;
 import com.raditomo.registration.service.RegistrationService;
+import com.raditomo.station.repository.StationRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/registrations")
@@ -20,14 +23,19 @@ import java.util.List;
 public class RegistrationController {
 
     private final RegistrationService registrationService;
+    private final StationRepository stationRepository;
 
     @GetMapping
     public List<RegistrationResponse> list(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) RegistrationStatus status) {
         require(userId);
-        return registrationService.listForUser(userId, status).stream()
-                .map(RegistrationResponse::from)
+        var regs = registrationService.listForUser(userId, status);
+        var stationIds = regs.stream().map(r -> r.getStationId()).distinct().toList();
+        Map<String, String> nameByStationId = stationRepository.findAllById(stationIds).stream()
+                .collect(Collectors.toMap(s -> s.getId(), s -> s.getName(), (a, b) -> a));
+        return regs.stream()
+                .map(r -> RegistrationResponse.from(r, nameByStationId.get(r.getStationId())))
                 .toList();
     }
 
@@ -38,7 +46,10 @@ public class RegistrationController {
         require(userId);
         try {
             var r = registrationService.create(userId, req);
-            return ResponseEntity.status(HttpStatus.CREATED).body(RegistrationResponse.from(r));
+            String stationName = stationRepository.findById(r.getStationId())
+                    .map(s -> s.getName()).orElse(null);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(RegistrationResponse.from(r, stationName));
         } catch (RegistrationService.DuplicateRegistrationException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }

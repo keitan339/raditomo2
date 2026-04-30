@@ -100,6 +100,7 @@ export interface ProgramDetailResponse extends ProgramItem {
 export interface RegistrationResponse {
   id: number;
   stationId: string;
+  stationName: string;
   title: string;
   broadcastStartAt: string;
   broadcastEndAt: string;

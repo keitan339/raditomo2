@@ -86,7 +86,7 @@ export function RegistrationsPage() {
                             color={r.registrationType === 'WEEKLY' ? 'primary' : 'default'}
                             label={r.registrationType === 'WEEKLY' ? '毎週' : '一回'}
                           />
-                          <Chip size="small" variant="outlined" label={r.stationId} />
+                          <Chip size="small" variant="outlined" label={r.stationName} />
                           <Typography variant="caption" color="text.secondary">
                             {formatRange(r.broadcastStartAt, r.broadcastEndAt)}
                           </Typography>
