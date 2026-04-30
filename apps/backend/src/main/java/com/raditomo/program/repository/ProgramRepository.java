@@ -43,7 +43,7 @@ public interface ProgramRepository extends JpaRepository<Program, Long> {
             WHERE s.areaId = :areaId
               AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))
                 OR LOWER(COALESCE(p.performers, '')) LIKE LOWER(CONCAT('%', :q, '%')))
-            ORDER BY p.broadcastStartAt DESC
+            ORDER BY p.broadcastStartAt ASC
             """)
     List<Program> searchByAreaAndKeyword(
             @Param("areaId") String areaId, @Param("q") String q, Pageable pageable);
