@@ -21,12 +21,13 @@ import org.springframework.web.bind.annotation.*;
 public class HistoryController {
 
     private final DownloadHistoryRepository historyRepository;
+    private final java.time.Clock clock;
 
     @GetMapping("/badge")
     public BadgeResponse badge(@AuthenticationPrincipal Long userId) {
         require(userId);
-        long failed = historyRepository.countByUserIdAndStatus(userId, DownloadStatus.FAILED);
-        long expired = historyRepository.countByUserIdAndStatus(userId, DownloadStatus.EXPIRED);
+        long failed = historyRepository.countByUserIdAndStatusAndNotifiedAtIsNull(userId, DownloadStatus.FAILED);
+        long expired = historyRepository.countByUserIdAndStatusAndNotifiedAtIsNull(userId, DownloadStatus.EXPIRED);
         return new BadgeResponse(failed, expired);
     }
 
@@ -45,6 +46,15 @@ public class HistoryController {
                 hits.getContent().stream().map(HistoryItem::from).toList(),
                 hits.getNumber(), hits.getSize(),
                 hits.getTotalElements(), hits.getTotalPages());
+    }
+
+    /** 未読の FAILED / EXPIRED を一括で既読化（バッジを 0 にする）。 */
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/mark-seen")
+    public BadgeResponse markSeen(@AuthenticationPrincipal Long userId) {
+        require(userId);
+        historyRepository.markAllErrorsNotified(userId, java.time.OffsetDateTime.now(clock));
+        return new BadgeResponse(0, 0);
     }
 
     @DeleteMapping("/{id}")

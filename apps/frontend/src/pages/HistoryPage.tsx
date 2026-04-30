@@ -20,7 +20,7 @@ import {
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DownloadStatus, HistoryItem } from '../types/api';
 import { historiesApi } from '../api/histories';
@@ -44,6 +44,14 @@ export function HistoryPage() {
     queryFn: () => historiesApi.list(status === 'ALL' ? null : status, page, 50),
     placeholderData: (prev) => prev,
   });
+
+  // 履歴ページを開いたら未読バッジを既読化
+  useEffect(() => {
+    historiesApi
+      .markSeen()
+      .then(() => qc.invalidateQueries({ queryKey: ['badge'] }))
+      .catch(() => undefined);
+  }, [qc]);
 
   const remove = useMutation({
     mutationFn: (id: number) => historiesApi.delete(id),

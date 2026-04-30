@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { HistoryItem, PageResponse } from '../types/api';
+import type { BadgeResponse, HistoryItem, PageResponse } from '../types/api';
 import type { DownloadStatus } from '../types/api';
 
 export const historiesApi = {
@@ -9,4 +9,5 @@ export const historiesApi = {
     return api.get<PageResponse<HistoryItem>>(`/api/histories?${params.toString()}`);
   },
   delete: (id: number) => api.del<void>(`/api/histories/${id}`),
+  markSeen: () => api.post<BadgeResponse>('/api/histories/mark-seen'),
 };

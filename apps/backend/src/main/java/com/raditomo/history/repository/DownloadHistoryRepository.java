@@ -17,6 +17,22 @@ public interface DownloadHistoryRepository extends JpaRepository<DownloadHistory
 
     long countByUserIdAndStatus(Long userId, DownloadStatus status);
 
+    /** 未通知（バッジ未確認）の件数。履歴ページを開いて既読化されると 0 になる。 */
+    long countByUserIdAndStatusAndNotifiedAtIsNull(Long userId, DownloadStatus status);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("""
+            UPDATE DownloadHistory h
+            SET h.notifiedAt = :now
+            WHERE h.userId = :userId
+              AND h.status IN (com.raditomo.history.entity.DownloadStatus.FAILED,
+                               com.raditomo.history.entity.DownloadStatus.EXPIRED)
+              AND h.notifiedAt IS NULL
+            """)
+    int markAllErrorsNotified(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("now") OffsetDateTime now);
+
     Optional<DownloadHistory> findFirstByUserIdAndStationIdAndBroadcastStartAtAndStatus(
             Long userId, String stationId, OffsetDateTime broadcastStartAt, DownloadStatus status);
 
