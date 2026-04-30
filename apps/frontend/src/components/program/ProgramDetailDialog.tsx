@@ -69,6 +69,7 @@ export function ProgramDetailDialog({ open, programId, fallback, onClose }: Prop
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['programs'] });
+      qc.invalidateQueries({ queryKey: ['programs-search'] });
       qc.invalidateQueries({ queryKey: ['registrations'] });
       qc.invalidateQueries({ queryKey: ['program', programId] });
       onClose();
@@ -82,6 +83,7 @@ export function ProgramDetailDialog({ open, programId, fallback, onClose }: Prop
     mutationFn: () => registrationsApi.delete(registration!.registrationId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['programs'] });
+      qc.invalidateQueries({ queryKey: ['programs-search'] });
       qc.invalidateQueries({ queryKey: ['registrations'] });
       qc.invalidateQueries({ queryKey: ['program', programId] });
       onClose();
