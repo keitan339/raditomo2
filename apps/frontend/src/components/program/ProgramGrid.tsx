@@ -21,22 +21,25 @@ export function ProgramGrid({ stations, onSelect }: Props) {
       <Box sx={{ display: 'flex', minWidth: 'fit-content' }}>
         <Box sx={{ width: 64, flexShrink: 0, position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper' }}>
           <Box sx={{ height: 48, borderBottom: 1, borderColor: 'divider' }} />
-          {HOURS.map((h) => (
-            <Box
-              key={h}
-              sx={{
-                height: HOUR_HEIGHT,
-                borderTop: 1,
-                borderColor: 'divider',
-                px: 1,
-                pt: 0.5,
-              }}
-            >
-              <Typography variant="caption" color="text.secondary">
+          {/* 番組カラム側の hour line と完全に揃えるため、軸ラベルも絶対配置で同じ y にする。 */}
+          <Box sx={{ position: 'relative', height: HOURS.length * HOUR_HEIGHT }}>
+            {HOURS.map((h) => (
+              <Typography
+                key={h}
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  position: 'absolute',
+                  // ラベル中央が row line（top = (h-5)*HOUR_HEIGHT）に揃うようにする
+                  top: (h - 5) * HOUR_HEIGHT - 8,
+                  left: 8,
+                  lineHeight: 1,
+                }}
+              >
                 {String(h).padStart(2, '0')}:00
               </Typography>
-            </Box>
-          ))}
+            ))}
+          </Box>
         </Box>
         {stations.map((st) => (
           <Box
