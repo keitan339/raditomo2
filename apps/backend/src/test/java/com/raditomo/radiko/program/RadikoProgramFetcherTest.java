@@ -54,7 +54,7 @@ class RadikoProgramFetcherTest {
                 </radiko>
                 """;
 
-        RadikoProgramFetcher.ParseResult result = fetcher.parse(xml);
+        RadikoProgramFetcher.ParseResult result = fetcher.parse(xml, "JP13");
         assertThat(result.stationsParsed()).isEqualTo(2);
         assertThat(result.stationsFailed()).isEqualTo(0);
         assertThat(result.stations()).extracting("id").containsExactly("TBS", "QRR");
@@ -80,13 +80,50 @@ class RadikoProgramFetcherTest {
     @Test
     void parse_returnsEmptyForMissingStations() {
         String xml = "<radiko></radiko>";
-        RadikoProgramFetcher.ParseResult result = fetcher.parse(xml);
+        RadikoProgramFetcher.ParseResult result = fetcher.parse(xml, "JP13");
         assertThat(result.programs()).isEmpty();
     }
 
     @Test
     void parse_throwsForInvalidXml() {
-        assertThatThrownBy(() -> fetcher.parse("<not-xml"))
+        assertThatThrownBy(() -> fetcher.parse("<not-xml", "JP13"))
                 .isInstanceOf(RadikoProgramFetcher.RadikoProgramFetchException.class);
+    }
+
+    @Test
+    void parse_acceptsUnknownAttributesAndElementsFromActualRadikoXml() {
+        // 実 radiko XML には <ttl>, <srvtime>, <date>, <prog> の url/url_link/failed_record/ts_in_ng 等、
+        // 多数の未マップ要素が含まれる。これらが含まれてもパースが成功し、area_id 属性が
+        // 無くても引数の areaId が反映されることを確認する。
+        String xml = """
+                <radiko>
+                  <ttl>1800</ttl>
+                  <srvtime>1777511523</srvtime>
+                  <stations>
+                    <station id="TBS">
+                      <name>TBSラジオ</name>
+                      <progs>
+                        <date>20260429</date>
+                        <prog id="13261820" master_id="" ft="20260429050000" to="20260429063000"
+                              ftl="0500" tol="0630" dur="5400">
+                          <title>朝の番組</title>
+                          <url>https://example.com/</url>
+                          <url_link>https://example.com/?_</url_link>
+                          <failed_record>0</failed_record>
+                          <ts_in_ng>0</ts_in_ng>
+                          <pfm>キャスター</pfm>
+                          <desc></desc>
+                          <info>info</info>
+                        </prog>
+                      </progs>
+                    </station>
+                  </stations>
+                </radiko>
+                """;
+        RadikoProgramFetcher.ParseResult result = fetcher.parse(xml, "JP13");
+        assertThat(result.stationsParsed()).isEqualTo(1);
+        assertThat(result.stations()).extracting("areaId").containsOnly("JP13");
+        assertThat(result.programs()).hasSize(1);
+        assertThat(result.programs().get(0).getTitle()).isEqualTo("朝の番組");
     }
 }

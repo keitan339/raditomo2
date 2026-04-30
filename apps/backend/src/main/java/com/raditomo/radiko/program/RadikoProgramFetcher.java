@@ -1,5 +1,6 @@
 package com.raditomo.radiko.program;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.raditomo.common.time.JstTimes;
 import com.raditomo.program.entity.Program;
@@ -40,7 +41,10 @@ import java.util.List;
 public class RadikoProgramFetcher {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final XmlMapper XML_MAPPER = new XmlMapper();
+    // ラジコ番組表 XML には ProgramXml にマッピングしていない要素（ttl, srvtime, prog の url/failed_record 等）が
+    // 多数含まれるため、未知プロパティでは失敗させない設定にする。
+    private static final XmlMapper XML_MAPPER = (XmlMapper) new XmlMapper()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private final RadikoProperties props;
     private final HttpClient radikoHttpClient;
@@ -54,7 +58,7 @@ public class RadikoProgramFetcher {
         String xmlContent = httpGet(url);
 
         Path savedFile = saveRawXml(yyyymmdd, areaId, xmlContent);
-        ParseResult parsed = parse(xmlContent);
+        ParseResult parsed = parse(xmlContent, areaId);
 
         log.info("Fetched program XML: area={} date={} stations={} programs={}",
                 areaId, broadcastDate,
@@ -94,7 +98,7 @@ public class RadikoProgramFetcher {
     }
 
     /** package-private for IT. */
-    ParseResult parse(String xml) {
+    ParseResult parse(String xml, String requestedAreaId) {
         ProgramXml.Root root;
         try {
             root = XML_MAPPER.readValue(xml, ProgramXml.Root.class);
@@ -105,7 +109,9 @@ public class RadikoProgramFetcher {
             return new ParseResult(0, 0, List.of(), List.of());
         }
 
-        String areaId = root.stations.areaId;
+        // ラジコの新スキーマ（2026/1/26〜）では <stations> に area_id 属性が無い場合がある。
+        // フォールバックとして、リクエスト時の area_id を使う。
+        String areaId = root.stations.areaId != null ? root.stations.areaId : requestedAreaId;
         List<Station> stations = new ArrayList<>();
         List<Program> programs = new ArrayList<>();
         int success = 0, failed = 0;
