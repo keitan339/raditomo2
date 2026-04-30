@@ -4,11 +4,15 @@
 # - HTTPS で SPA / API プロキシ / HLS（auth_request 認証）を配信
 # - 同一オリジンのため CORS は不要
 # - HLS は /hls/{userId}/.../playlist.m3u8 形式で /data/recordings/{userId}/hls/... にマッピング
+#
+# このファイルは nginx 公式イメージの envsubst テンプレート機能で展開される。
+# NGINX_ENVSUBST_FILTER=^APP_ により APP_ で始まる変数のみ置換され、
+# nginx 内蔵変数（$host, $remote_addr 等）は置換されない。
 
 # HTTP -> HTTPS（Let's Encrypt webroot のみ素通し）
 server {
     listen 80;
-    server_name raditomo.hidenv.com;
+    server_name ${APP_DOMAIN};
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -24,10 +28,10 @@ server {
 server {
     listen 443 ssl;
     http2 on;
-    server_name raditomo.hidenv.com;
+    server_name ${APP_DOMAIN};
 
-    ssl_certificate     /etc/nginx/certs/live/raditomo.hidenv.com/fullchain.pem;
-    ssl_certificate_key /etc/nginx/certs/live/raditomo.hidenv.com/privkey.pem;
+    ssl_certificate     /etc/nginx/certs/live/${APP_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/live/${APP_DOMAIN}/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers off;

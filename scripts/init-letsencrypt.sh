@@ -4,7 +4,8 @@
 # 前提:
 #   - DNS が raditomo.hidenv.com → サーバー外部 IP に設定されている
 #   - ルーターで 80/443 がサーバーに転送されている
-#   - .env で APP_BASE_URL / GOOGLE_OAUTH_REDIRECT_URI が本番ドメインに設定されている
+#   - .env で APP_DOMAIN / APP_BASE_URL / GOOGLE_OAUTH_REDIRECT_URI が本番ドメインに設定されている
+#   - GHCR の raditomo-web イメージが既に CI で push されている（main に push 後）
 #
 # 流れ:
 #   1. 仮の自己署名証明書を生成（Nginx を起動するため）

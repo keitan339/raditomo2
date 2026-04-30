@@ -1,14 +1,12 @@
 services:
   nginx:
-    image: nginx:1.27-alpine
+    image: ghcr.io/keitan339/raditomo-web:latest
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./infra/nginx/certs:/etc/nginx/certs:ro
-      - ./apps/frontend/dist:/usr/share/nginx/html:ro
       - ./data/recordings:/data/recordings:ro
       - ./data/certbot/www:/var/www/certbot:ro
     depends_on:
@@ -17,9 +15,10 @@ services:
       - radiko-net
     environment:
       TZ: Asia/Tokyo
+      APP_DOMAIN: ${APP_DOMAIN}
 
   app:
-    build: ./apps/backend
+    image: ghcr.io/keitan339/raditomo-backend:latest
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod

@@ -2,6 +2,38 @@
 
 自宅サーバーへの初回デプロイから日次運用までの手順書。`raditomo.hidenv.com` で公開する想定。
 
+## 全体像
+
+イメージは GitHub Actions が GHCR にビルド・公開する。自宅サーバーはそれを pull して動かすだけ。
+
+```
+[ローカル開発] → git push main → GitHub Actions (テスト+ビルド+GHCR push)
+                                            ↓
+                          [自宅] ./scripts/deploy.sh で pull & up -d
+```
+
+GHCR に置かれるイメージ:
+
+| イメージ | 中身 |
+|---|---|
+| `ghcr.io/keitan339/raditomo-backend:latest` | Spring Boot JAR + ffmpeg + JRE |
+| `ghcr.io/keitan339/raditomo-web:latest` | Nginx + frontend dist + nginx 設定（テンプレート展開） |
+
+サーバー上ではローカルビルドは行わない。証明書・録音データ・DB は引き続きホストマウント。
+
+## 初回 vs 更新
+
+| 項目 | 初回 | 更新 |
+|---|---|---|
+| DNS / ルータ / Google OAuth / Gmail SMTP 設定 | 必要 | 不要 |
+| `.env` 作成 | 必要 | 不要（変更時のみ） |
+| Let's Encrypt 初期取得（`init-letsencrypt.sh`） | 必要 | 不要（自動更新） |
+| 許可ユーザー登録（`cli users add`） | 必要 | ユーザー追加時のみ |
+| `git pull` | clone | `deploy.sh` 内で実行 |
+| イメージ取得 | `docker compose pull` | `deploy.sh` 内で実行 |
+| コンテナ起動 | `docker compose up -d` | `deploy.sh` 内で実行 |
+| cron（Nginx reload / DB バックアップ） | セットアップ | 不要 |
+
 ## 前提条件
 
 | 項目 | 値・確認方法 |
@@ -45,25 +77,13 @@ $EDITOR .env
 | `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET` | Google Cloud Console で発行した値 |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `https://raditomo.hidenv.com/auth/callback` |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | Gmail アプリパスワード |
-| `APP_BASE_URL` | `https://raditomo.hidenv.com` |
+| `APP_DOMAIN` | `raditomo.hidenv.com`（スキーム無し。Nginx の `server_name` と証明書パスに使用） |
+| `APP_BASE_URL` | `https://raditomo.hidenv.com`（スキーム付き。バックエンドの OAuth リダイレクト等に使用） |
 | `RADIKO_DOWNLOAD_CONCURRENCY` | 並列度。デフォルト 8 |
 
 `.env` は **絶対にリポジトリにコミットしない**（`.gitignore` で除外済み）。
 
-### 3. フロントエンドビルド
-
-`docker-compose.yml` は `./apps/frontend/dist` を Nginx にマウントするため、**ホスト側で先にビルドしておく**必要がある。
-
-```bash
-cd apps/frontend
-npm ci
-npm run build
-cd ../..
-```
-
-`apps/frontend/dist/index.html` が生成されていること。
-
-### 4. Let's Encrypt 証明書を取得
+### 3. Let's Encrypt 証明書を取得
 
 DNS とルーター設定が済んでいることを確認してから:
 
@@ -86,22 +106,25 @@ DNS とルーター設定が済んでいることを確認してから:
 
 ステージングで成功確認できたら `infra/nginx/certs` をクリアして本番取得を再実行する。
 
-### 5. 全コンテナ起動
+### 4. 全コンテナ起動
 
 ```bash
+docker compose pull
 docker compose up -d
 ```
+
+`pull` で GHCR から `raditomo-backend` / `raditomo-web` の最新イメージを取得する（GHCR は public のため認証不要）。`db` と `certbot` は Docker Hub の公式イメージ。
 
 起動するもの:
 
 | サービス | 説明 |
 |---|---|
-| `nginx` | 80/443 を受ける。SPA 配信 + `/api/*` プロキシ + HLS auth_request |
+| `nginx` | 80/443 を受ける。SPA 配信 + `/api/*` プロキシ + HLS auth_request（設定は image に焼き込み済み、`APP_DOMAIN` を起動時展開） |
 | `app` | Spring Boot（prod プロファイル）、内部 8080 |
 | `db` | Postgres 16。Flyway がアプリ起動時にマイグレーション実行 |
 | `certbot` | 12 時間ごとに `certbot renew --webroot` を実行（自動更新） |
 
-### 6. 許可ユーザーを登録
+### 5. 許可ユーザーを登録
 
 このアプリは許可リスト方式。Google アカウントのメールを事前に追加する:
 
@@ -116,7 +139,7 @@ docker compose run --rm app cli users list
 docker compose run --rm app cli users remove you@gmail.com
 ```
 
-### 7. 動作確認
+### 6. 動作確認
 
 ```bash
 curl -I https://raditomo.hidenv.com/
@@ -171,16 +194,33 @@ cron などで日次実行を推奨。`./data/postgres` ディレクトリを丸
 
 ## 更新フロー
 
-新しいコードをデプロイする手順:
+`main` への push が GitHub Actions でテスト緑 → GHCR にイメージ公開、まで自動。サーバー側はスクリプト1本:
 
 ```bash
-git pull
-cd apps/frontend && npm ci && npm run build && cd ../..
-docker compose build app                # 必要な時のみ（バックエンド変更時）
-docker compose up -d app nginx          # ローリング再起動
+./scripts/deploy.sh
 ```
 
-DB スキーマ変更は Flyway が自動適用する（マイグレーションファイルは `apps/backend/src/main/resources/db/migration/`）。
+中身は以下と等価:
+
+```bash
+git pull --ff-only            # docker-compose.yml や deploy.sh 自体の更新を反映
+docker compose pull app nginx # GHCR から最新イメージを取得
+docker compose up -d app nginx # ローリング再起動
+docker image prune -f         # 古いイメージを掃除
+```
+
+DB スキーマ変更は Flyway が自動適用する（マイグレーションファイルはバックエンド image に同梱）。
+
+### CI の動き
+
+`.github/workflows/ci.yml` の `build-and-push` ジョブが `main` への push 時に動作する:
+
+1. backend UT/IT・frontend UT・Playwright スモークが全緑になるのを待つ
+2. GHCR にログイン（`GITHUB_TOKEN`）
+3. `apps/backend/Dockerfile` から `raditomo-backend` を build & push（`:latest` と `:<sha>`）
+4. `infra/nginx/Dockerfile` から `raditomo-web` を build & push（同上）
+
+イメージタグ `:<sha>` は固定参照したい時用（普段は `:latest` で十分）。
 
 ---
 
@@ -241,10 +281,9 @@ DB スキーマ変更は Flyway が自動適用する（マイグレーション
 - [ ] ルーターのポート転送 80/443
 - [ ] Google OAuth クライアントの redirect URI 登録
 - [ ] Gmail アプリパスワード発行
-- [ ] `.env` 完成（特に `JWT_SECRET` の生成と `APP_BASE_URL` のドメイン）
-- [ ] フロントエンドビルド完了（`apps/frontend/dist/index.html` 存在）
+- [ ] `.env` 完成（特に `JWT_SECRET` の生成、`APP_DOMAIN` / `APP_BASE_URL` のドメイン）
 - [ ] `init-letsencrypt.sh` 実行成功（`infra/nginx/certs/live/<domain>/fullchain.pem` 存在）
-- [ ] `docker compose up -d` で全コンテナ Healthy
+- [ ] `docker compose pull && docker compose up -d` で全コンテナ Healthy
 - [ ] 許可ユーザー追加（`cli users add`）
 - [ ] ブラウザでログイン → 番組表表示まで成功
 - [ ] cron に Nginx リロード（証明書更新後の反映用）追加
