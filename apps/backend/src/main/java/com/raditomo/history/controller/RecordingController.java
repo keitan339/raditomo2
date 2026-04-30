@@ -51,8 +51,10 @@ public class RecordingController {
                 byKey.put(key, new RecordingGroupResponse(key, cur.count() + 1, latest));
             }
         }
+        // 番組名（グループキー）の五十音順で返す。
+        java.text.Collator jaCollator = java.text.Collator.getInstance(java.util.Locale.JAPANESE);
         return byKey.values().stream()
-                .sorted(java.util.Comparator.comparing(RecordingGroupResponse::latestBroadcastAt).reversed())
+                .sorted((a, b) -> jaCollator.compare(a.title(), b.title()))
                 .toList();
     }
 
@@ -68,7 +70,9 @@ public class RecordingController {
         var matched = historyRepository.findAvailableRecordings(userId).stream()
                 .filter(h -> title.equals(titleGrouper.groupKey(h.getProgramTitle())))
                 .toList();
+        // 放送日時の昇順（古い順）で返す
         return dedupePerBroadcast(matched).stream()
+                .sorted(java.util.Comparator.comparing(DownloadHistory::getBroadcastStartAt))
                 .map(h -> RecordingResponse.from(
                         h, stationNameOf(h.getStationId()),
                         recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))
