@@ -192,7 +192,6 @@ DevContainer（`.devcontainer/`）にセットアップ済み:
 - タイムゾーン: JST (Asia/Tokyo)
 
 実装フェーズで追加が必要なもの:
-- IT 用 `docker-compose.test.yml`（mock-oauth2-server など）
 - 開発用 `.env`（リポジトリ除外、`.env.example` をコミット）
 - 本番用 SSL 証明書取得手順（Let's Encrypt + HTTP-01、Value Domain でDNS設定）
 

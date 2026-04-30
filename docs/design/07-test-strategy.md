@@ -66,7 +66,7 @@
 |-------------|-----------|------|
 | PostgreSQL | **Testcontainers** で起動（テストごとにフレッシュ） | テスト中に起動 |
 | Gmail SMTP | **GreenMail**（埋込ライブラリ） | 埋込 |
-| Google OAuth | **mock-oauth2-server**（Docker） | `docker-compose.test.yml` |
+| Google OAuth | **mock-oauth2-server**（Java ライブラリ） | 埋込（in-process） |
 | ラジコ API | **WireMock**（埋込） | 埋込 |
 | ffmpeg | 実 ffmpeg（DevContainerに既にあり） | DevContainer |
 
@@ -95,18 +95,19 @@
 | 項目 | 値 |
 |------|-----|
 | ブラウザ | Chromium / WebKit (Playwright 標準) |
-| 起動方式 | DevContainer 内 |
-| 対象 | `docker-compose.test.yml` で起動した IT 環境 |
+| 起動方式 | CI: Playwright 公式 container / ローカル: DevContainer |
+| 対象 | Playwright が `npm run dev` を起動して SPA を検証（バックエンドは現状不要のスモークのみ） |
 
-#### 重要な検証シナリオ
+#### 重要な検証シナリオ（現状はスモークのみ実装）
 
 | シナリオ | 検証内容 |
 |---------|---------|
-| ログインフロー | mock-oauth2-server 経由でログイン → ホーム表示 |
-| 番組登録 | 番組表表示 → 番組クリック → 登録モーダル → 登録 → 一覧反映 |
-| 録音再生（HLS） | ライブラリ → 番組選択 → hls.js 再生開始 → レジューム位置保存 |
-| バッチ手動実行 | ボタン押下 → 進捗ポーリング → 完了表示 |
-| 履歴削除（期限切れ警告） | 期限切れ番組の削除時に「再ダウンロードできません」警告表示 |
+| 未認証アクセス | `/` → `/login` リダイレクト + "Raditomo" ヘッダ表示（実装済み・スモーク） |
+| ログインフロー | mock-oauth2-server 経由でログイン → ホーム表示（将来実装） |
+| 番組登録 | 番組表表示 → 番組クリック → 登録モーダル → 登録 → 一覧反映（将来実装） |
+| 録音再生（HLS） | ライブラリ → 番組選択 → hls.js 再生開始 → レジューム位置保存（将来実装） |
+| バッチ手動実行 | ボタン押下 → 進捗ポーリング → 完了表示（将来実装） |
+| 履歴削除（期限切れ警告） | 期限切れ番組の削除時に「再ダウンロードできません」警告表示（将来実装） |
 
 ### Frontend IT
 - バックエンドが起動した状態で Vitest + MSW（バックエンドが返す形式）で連携シナリオを検証
@@ -124,38 +125,6 @@ UT/IT で網羅できない部分（実 Google OAuth / 実 Gmail SMTP / 実ラ�
 - バッチ完了通知メールが Gmail に届くこと
 
 半自動スクリプト方式は当初設計していたが、個人利用 1 人運用ではブラウザでの動作確認が最も効率的なため不採用とした。
-
----
-
-## テスト用 Docker 構成
-
-`docker-compose.test.yml`（IT 用）：
-
-```yaml
-services:
-  test-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: radiko_test
-      POSTGRES_USER: radiko
-      POSTGRES_PASSWORD: test
-      TZ: Asia/Tokyo
-    ports:
-      - "15432:5432"
-
-  mock-oauth:
-    image: ghcr.io/navikt/mock-oauth2-server:2.x
-    ports:
-      - "18080:8080"
-    environment:
-      JSON_CONFIG: |
-        {
-          "interactiveLogin": false,
-          "tokenCallbacks": [...]
-        }
-```
-
-※ 通常の Backend IT は Testcontainers が DB を自動起動するため `test-db` は不要。Playwright IT のときに `docker-compose.test.yml` 全体を起動する。
 
 ---
 
@@ -264,13 +233,18 @@ jobs:
 
   browser-it:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.x-noble
     needs: [backend-it, frontend-ut]
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose -f docker-compose.test.yml up -d
-      - run: npx playwright install --with-deps
-      - run: npm run test:e2e
+      - working-directory: apps/frontend
+        run: |
+          npm ci
+          npm run test:e2e
 ```
+
+※ 公式 Playwright image にブラウザ・OS 依存・Node 22 が同梱されているため `--with-deps` 不要。バックエンド不要のスモークなので `docker compose` も不要。
 
 ### 実機確認は CI 対象外
 - 実 Google / 実 Gmail / 実ラジコとの結合確認は手動（実機デプロイ後にブラウザで操作）
