@@ -1,5 +1,6 @@
 package com.raditomo.radiko.download;
 
+import com.raditomo.radiko.RadikoHttp;
 import com.raditomo.radiko.RadikoProperties;
 import com.raditomo.radiko.auth.RadikoAuthService;
 import com.raditomo.radiko.auth.RadikoAuthToken;
@@ -12,7 +13,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
@@ -251,12 +251,13 @@ public class RadikoTimefreeDownloader {
                 .timeout(Duration.ofSeconds(props.httpReadTimeoutSeconds()))
                 .build();
         try {
-            HttpResponse<String> resp = radikoHttpClient.send(
-                    req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            // バイト受信 + RadikoHttp.decodeBody で gzip を解凍する
+            HttpResponse<byte[]> resp = radikoHttpClient.send(
+                    req, HttpResponse.BodyHandlers.ofByteArray());
             if (resp.statusCode() / 100 != 2) {
                 throw new RadikoDownloadException("HTTP " + resp.statusCode() + " for " + url);
             }
-            return resp.body();
+            return RadikoHttp.decodeBody(resp);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RadikoDownloadException("Failed: " + url, e);
@@ -270,12 +271,13 @@ public class RadikoTimefreeDownloader {
                 .timeout(Duration.ofSeconds(props.httpReadTimeoutSeconds()))
                 .build();
         try {
-            HttpResponse<String> resp = radikoHttpClient.send(
-                    req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            // バイト受信 + RadikoHttp.decodeBody で gzip を解凍する
+            HttpResponse<byte[]> resp = radikoHttpClient.send(
+                    req, HttpResponse.BodyHandlers.ofByteArray());
             if (resp.statusCode() / 100 != 2) {
                 throw new RadikoDownloadException("HTTP " + resp.statusCode() + " for " + url);
             }
-            return resp.body();
+            return RadikoHttp.decodeBody(resp);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RadikoDownloadException("Failed: " + url, e);

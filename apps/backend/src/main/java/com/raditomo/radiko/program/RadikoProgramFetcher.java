@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.raditomo.common.time.JstTimes;
 import com.raditomo.program.entity.Program;
+import com.raditomo.radiko.RadikoHttp;
 import com.raditomo.radiko.RadikoProperties;
 import com.raditomo.station.entity.Station;
 import lombok.RequiredArgsConstructor;
@@ -73,12 +74,14 @@ public class RadikoProgramFetcher {
                 .timeout(Duration.ofSeconds(props.httpReadTimeoutSeconds()))
                 .build();
         try {
-            HttpResponse<String> resp = radikoHttpClient.send(
-                    req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            // バイトで受信して RadikoHttp.decodeBody で gzip を解凍する。
+            // 文字列受信だと gzip バイトが UTF-8 デコードで壊れる。
+            HttpResponse<byte[]> resp = radikoHttpClient.send(
+                    req, HttpResponse.BodyHandlers.ofByteArray());
             if (resp.statusCode() / 100 != 2) {
                 throw new RadikoProgramFetchException("HTTP " + resp.statusCode() + " for " + url);
             }
-            return resp.body();
+            return RadikoHttp.decodeBody(resp);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RadikoProgramFetchException("Failed to fetch " + url, e);
