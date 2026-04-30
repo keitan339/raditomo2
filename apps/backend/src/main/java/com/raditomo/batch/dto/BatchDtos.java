@@ -14,7 +14,17 @@ public class BatchDtos {
 
     public record RunBatchRequest(@NotNull BatchType type, Map<String, Object> options) {}
 
-    public record RunBatchResponse(Long batchExecutionId, BatchStatus status) {}
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RunBatchResponse(
+            Long batchExecutionId,
+            BatchStatus status,
+            // 409 Conflict で「既に実行中のバッチ」を返す際、開始時刻も同梱して
+            // フロントが「N 分前から実行中」を表示できるようにする。
+            OffsetDateTime startedAt) {
+        public static RunBatchResponse running(BatchExecution e) {
+            return new RunBatchResponse(e.getId(), e.getStatus(), e.getStartedAt());
+        }
+    }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record BatchExecutionResponse(

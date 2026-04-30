@@ -186,4 +186,5 @@ export interface RunBatchRequest {
 export interface RunBatchResponse {
   batchExecutionId: number;
   status: BatchStatus;
+  startedAt?: string;
 }

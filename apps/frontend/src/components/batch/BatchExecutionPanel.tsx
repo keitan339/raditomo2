@@ -26,6 +26,23 @@ const BATCHES: { key: BatchKey; label: string; description: string }[] = [
   { key: 'F4_F2', label: 'F4 → F2 一括', description: '番組表取得＋ダウンロードを連続実行します' },
 ];
 
+/**
+ * 409 Conflict（既にバッチ実行中）のレスポンスから人間向け文言を組み立てる。
+ * 例: "5 分前（13:58）からダウンロードを実行中です。完了するまで待つか、再起動してください。"
+ */
+function formatAlreadyRunningMessage(body: unknown): string {
+  const generic = '既にバッチが実行中です';
+  if (!body || typeof body !== 'object') return generic;
+  const startedAt = (body as { startedAt?: string }).startedAt;
+  if (!startedAt) return generic;
+  const started = new Date(startedAt);
+  if (Number.isNaN(started.getTime())) return generic;
+  const elapsedMin = Math.max(0, Math.floor((Date.now() - started.getTime()) / 60_000));
+  const hh = String(started.getHours()).padStart(2, '0');
+  const mm = String(started.getMinutes()).padStart(2, '0');
+  return `${elapsedMin}分前（${hh}:${mm}）からダウンロードを実行中です。完了するまで待つか、再起動してください。`;
+}
+
 export function BatchExecutionPanel() {
   const [date, setDate] = useState('');
   const [force, setForce] = useState(false);
@@ -48,7 +65,7 @@ export function BatchExecutionPanel() {
     },
     onError: (e) => {
       if (e instanceof ApiError && e.status === 409) {
-        setError('既に同じバッチが実行中です');
+        setError(formatAlreadyRunningMessage(e.body));
       } else {
         setError(e instanceof Error ? e.message : 'バッチ起動に失敗しました');
       }

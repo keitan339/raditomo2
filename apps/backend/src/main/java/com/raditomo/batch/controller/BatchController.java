@@ -55,11 +55,11 @@ public class BatchController {
             BatchExecution exec = batchExecutionService.start(
                     request.type(), TriggeredBy.WEB, userId, optionsJson);
             dispatcher.runAsync(exec, request.type(), optionsJson);
-            return ResponseEntity.ok(new RunBatchResponse(exec.getId(), exec.getStatus()));
+            return ResponseEntity.ok(RunBatchResponse.running(exec));
         } catch (BatchExecutionService.BatchAlreadyRunningException e) {
             log.info("Batch run rejected (already running): id={}", e.getRunning().getId());
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new RunBatchResponse(e.getRunning().getId(), BatchStatus.RUNNING));
+                    .body(RunBatchResponse.running(e.getRunning()));
         }
     }
 
