@@ -25,6 +25,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DownloadStatus, HistoryItem } from '../types/api';
 import { historiesApi } from '../api/histories';
 import { formatBroadcastDateRange } from '../lib/time';
+import { DownloadStatusBanner } from '../components/batch/DownloadStatusBanner';
 
 const STATUS_OPTIONS: { value: 'ALL' | DownloadStatus; label: string }[] = [
   { value: 'ALL', label: '全て' },
@@ -73,6 +74,7 @@ export function HistoryPage() {
   return (
     <Stack spacing={2}>
       <Typography variant="h5">ダウンロード履歴</Typography>
+      <DownloadStatusBanner />
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
         <TextField
           select

@@ -22,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -69,6 +70,20 @@ public class BatchController {
                 .map(BatchExecutionResponse::from)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * 現在実行中の音声 DL バッチ（F2 単体 / F4 → F2 連鎖）を返す。
+     * 設定画面・履歴画面のステータスバナー用。実行中で無ければ空配列。
+     * バッチは同時 1 件しか走らない設計なので最大 1 件。
+     */
+    @GetMapping("/executions/running-download")
+    public List<BatchExecutionResponse> getRunningDownload() {
+        return batchExecutionRepository
+                .findByStatusAndBatchTypeIn(BatchStatus.RUNNING, List.of(BatchType.F2, BatchType.F4_F2))
+                .stream()
+                .map(BatchExecutionResponse::from)
+                .toList();
     }
 
     private String serializeOptions(Map<String, Object> options) {

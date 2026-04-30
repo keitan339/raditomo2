@@ -24,6 +24,7 @@ import { areasApi } from '../api/areas';
 import { userSettingsApi } from '../api/userSettings';
 import { batchApi } from '../api/batch';
 import { BatchExecutionPanel } from '../components/batch/BatchExecutionPanel';
+import { DownloadStatusBanner } from '../components/batch/DownloadStatusBanner';
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -87,6 +88,8 @@ export function SettingsPage() {
   return (
     <Stack spacing={3}>
       <Typography variant="h5">設定</Typography>
+
+      <DownloadStatusBanner />
 
       <Card variant="outlined">
         <CardContent>
