@@ -3,11 +3,13 @@ import { Layout } from '../components/common/Layout';
 import { AuthGuard } from '../components/common/AuthGuard';
 import { LoginPage } from '../pages/LoginPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
-import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { ProgramTablePage } from '../pages/ProgramTablePage';
 import { RegistrationsPage } from '../pages/RegistrationsPage';
 import { HistoryPage } from '../pages/HistoryPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { LibraryPage } from '../pages/LibraryPage';
+import { LibraryDetailPage } from '../pages/LibraryDetailPage';
+import { PlayerPage } from '../pages/PlayerPage';
 
 export function AppRoutes() {
   return (
@@ -24,9 +26,9 @@ export function AppRoutes() {
       >
         <Route index element={<ProgramTablePage />} />
         <Route path="registrations" element={<RegistrationsPage />} />
-        <Route path="library" element={<PlaceholderPage title="ライブラリ" />} />
-        <Route path="library/:title" element={<PlaceholderPage title="ライブラリ - 番組" />} />
-        <Route path="player/:historyId" element={<PlaceholderPage title="プレイヤー" />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="library/:title" element={<LibraryDetailPage />} />
+        <Route path="player/:historyId" element={<PlayerPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
