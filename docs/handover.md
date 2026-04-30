@@ -35,6 +35,11 @@
 | `docs/design/06-docker-security.md` | Docker構成・Nginx・JWT・HLS配信認証 |
 | `docs/design/07-test-strategy.md` | UT/IT/ST 3層、ツール、カバレッジ80%、CI |
 
+### 運用ドキュメント
+| ファイル | 内容 |
+|---------|------|
+| `docs/deployment.md` | 本番デプロイ手順（前提・初回セットアップ・更新フロー・トラブルシュート） |
+
 ### 過去フェーズ
 | ファイル | 内容 |
 |---------|------|
