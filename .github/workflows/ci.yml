@@ -76,6 +76,11 @@ jobs:
   browser-it:
     name: Browser IT (Playwright)
     runs-on: ubuntu-latest
+    # 公式 Playwright image にはブラウザ・OS 依存・Node 22 が同梱済みで、
+    # `playwright install --with-deps` の 12 分超を丸ごと省ける。
+    # Playwright バージョン更新時はこの tag も合わせて上げること。
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
     needs: [backend-it, frontend-ut]
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     defaults:
@@ -83,16 +88,7 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: apps/frontend/package-lock.json
       - run: npm ci
-      - run: npx playwright install --with-deps
-      - name: Start IT compose
-        working-directory: ${{ github.workspace }}
-        run: docker compose -f docker-compose.test.yml up -d
       - run: npm run test:e2e
       - if: always()
         uses: actions/upload-artifact@v4
