@@ -30,8 +30,8 @@ export function ProgramGrid({ stations, onSelect }: Props) {
                 color="text.secondary"
                 sx={{
                   position: 'absolute',
-                  // ラベル中央が row line（top = (h-5)*HOUR_HEIGHT）に揃うようにする
-                  top: (h - 5) * HOUR_HEIGHT - 8,
+                  // ラベル top を行ライン（番組カード top と同じ y）に置く
+                  top: (h - 5) * HOUR_HEIGHT,
                   left: 8,
                   lineHeight: 1,
                 }}
