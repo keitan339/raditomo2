@@ -4,19 +4,6 @@
 .env.*.local
 .env.st
 
-# Runtime mount targets (data is gitignored, dirs kept via .gitkeep)
-deployment/data/recordings/*
-deployment/data/xml/*
-deployment/data/logs/*
-deployment/data/postgres/
-deployment/data/certbot/
-!deployment/data/recordings/.gitkeep
-!deployment/data/xml/.gitkeep
-!deployment/data/logs/.gitkeep
-
-# TLS 証明書（Let's Encrypt 取得後）
-deployment/certs/
-
 # Playwright MCP の実行時アーティファクト（console ログ・スナップショット等）
 .playwright-mcp/
 
