@@ -33,21 +33,27 @@ if [ "${3-}" = "--staging" ]; then
   EXTRA_ARGS+=("--staging")
 fi
 
-CERT_DIR="./certs"
-WEBROOT="./data/certbot/www"
+# cert / webroot ディレクトリを certbot コンテナ経由で準備する。
+# certbot は root 実行のため、bind mount 先のホストパスが root 所有でも書き込める。
+# 仮の自己署名証明書も同コンテナで生成（nginx の初回起動に必要）。
+echo "==> ディレクトリ準備と仮の自己署名証明書を生成（certbot コンテナ経由）"
+docker compose run --rm --entrypoint sh certbot -c "
+  mkdir -p /var/www/certbot /etc/letsencrypt/live/$DOMAIN
+  if [ ! -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
+    echo '   仮の自己署名証明書を生成中'
+    openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+      -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
+      -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
+      -subj /CN=$DOMAIN
+  else
+    echo '   既存の cert があるのでスキップ'
+  fi
+"
 
-mkdir -p "$CERT_DIR/live/$DOMAIN" "$WEBROOT"
-
-if [ ! -f "$CERT_DIR/live/$DOMAIN/fullchain.pem" ]; then
-  echo "==> 仮の自己署名証明書を生成"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-    -keyout "$CERT_DIR/live/$DOMAIN/privkey.pem" \
-    -out    "$CERT_DIR/live/$DOMAIN/fullchain.pem" \
-    -subj   "/CN=$DOMAIN"
-fi
-
-echo "==> Nginx を起動"
+# nginx を起動（既に restart-loop 中なら、上で生成した仮 cert を読んで起動成功する）
+echo "==> Nginx を起動 / 再起動"
 docker compose up -d nginx
+docker compose restart nginx
 
 # certbot は live/<domain>/ が既に存在するとエラー終了するため、ここで削除する。
 # certbot が以前生成した cert ファイルは root 所有なのでホスト側 rm では消せない。
