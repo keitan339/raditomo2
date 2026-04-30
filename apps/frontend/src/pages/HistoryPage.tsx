@@ -35,13 +35,21 @@ const STATUS_OPTIONS: { value: 'ALL' | DownloadStatus; label: string }[] = [
 
 export function HistoryPage() {
   const [status, setStatus] = useState<'ALL' | DownloadStatus>('ALL');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [target, setTarget] = useState<HistoryItem | null>(null);
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['histories', status, page],
-    queryFn: () => historiesApi.list(status === 'ALL' ? null : status, page, 50),
+    queryKey: ['histories', status, searchTerm, page],
+    queryFn: () =>
+      historiesApi.list(
+        status === 'ALL' ? null : status,
+        searchTerm || null,
+        page,
+        50,
+      ),
     placeholderData: (prev) => prev,
   });
 
@@ -65,23 +73,58 @@ export function HistoryPage() {
   return (
     <Stack spacing={2}>
       <Typography variant="h5">ダウンロード履歴</Typography>
-      <TextField
-        select
-        size="small"
-        label="ステータス"
-        value={status}
-        onChange={(e) => {
-          setStatus(e.target.value as 'ALL' | DownloadStatus);
-          setPage(0);
-        }}
-        sx={{ width: 200 }}
-      >
-        {STATUS_OPTIONS.map((o) => (
-          <MenuItem key={o.value} value={o.value}>
-            {o.label}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+        <TextField
+          select
+          size="small"
+          label="ステータス"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value as 'ALL' | DownloadStatus);
+            setPage(0);
+          }}
+          sx={{ width: 200 }}
+        >
+          {STATUS_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>
+              {o.label}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          size="small"
+          label="番組名で検索"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setSearchTerm(searchInput);
+              setPage(0);
+            }
+          }}
+          sx={{ flexGrow: 1 }}
+        />
+        <Button
+          variant="outlined"
+          onClick={() => {
+            setSearchTerm(searchInput);
+            setPage(0);
+          }}
+        >
+          検索
+        </Button>
+        {searchTerm && (
+          <Button
+            onClick={() => {
+              setSearchInput('');
+              setSearchTerm('');
+              setPage(0);
+            }}
+          >
+            クリア
+          </Button>
+        )}
+      </Stack>
 
       {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

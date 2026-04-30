@@ -37,13 +37,19 @@ public class HistoryController {
     public PageResponse<HistoryItem> list(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) DownloadStatus status,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         require(userId);
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "attemptedAt"));
-        Page<DownloadHistory> hits = status == null
-                ? historyRepository.findByUserId(userId, pageable)
-                : historyRepository.findByUserIdAndStatus(userId, status, pageable);
+        Page<DownloadHistory> hits;
+        if (q != null && !q.isBlank()) {
+            hits = historyRepository.searchByUserIdAndTitle(userId, status, q.trim(), pageable);
+        } else if (status != null) {
+            hits = historyRepository.findByUserIdAndStatus(userId, status, pageable);
+        } else {
+            hits = historyRepository.findByUserId(userId, pageable);
+        }
         var stationIds = hits.getContent().stream().map(DownloadHistory::getStationId).distinct().toList();
         var nameByStationId = stationRepository.findAllById(stationIds).stream()
                 .collect(java.util.stream.Collectors.toMap(s -> s.getId(), s -> s.getName(), (a, b) -> a));

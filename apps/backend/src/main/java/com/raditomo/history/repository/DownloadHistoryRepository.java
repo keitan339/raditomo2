@@ -15,6 +15,21 @@ public interface DownloadHistoryRepository extends JpaRepository<DownloadHistory
 
     Page<DownloadHistory> findByUserId(Long userId, Pageable pageable);
 
+    /**
+     * 番組名の部分一致検索（大文字小文字無視）。status が指定されていればさらに絞り込み。
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT h FROM DownloadHistory h
+            WHERE h.userId = :userId
+              AND (:status IS NULL OR h.status = :status)
+              AND LOWER(h.programTitle) LIKE LOWER(CONCAT('%', :q, '%'))
+            """)
+    Page<DownloadHistory> searchByUserIdAndTitle(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("status") DownloadStatus status,
+            @org.springframework.data.repository.query.Param("q") String q,
+            Pageable pageable);
+
     long countByUserIdAndStatus(Long userId, DownloadStatus status);
 
     /** 未通知（バッジ未確認）の件数。履歴ページを開いて既読化されると 0 になる。 */
