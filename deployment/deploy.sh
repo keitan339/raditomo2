@@ -12,13 +12,17 @@
 #   - GHCR は public のため docker login は不要
 #
 # 使い方:
-#   ./scripts/deploy.sh
+#   ./deployment/deploy.sh   （リポジトリのどこから呼んでも OK）
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+# このスクリプトのあるディレクトリ（= deployment/）
+DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$DEPLOY_DIR/.." && pwd)"
 
 echo "==> git pull"
-git pull --ff-only
+git -C "$REPO_ROOT" pull --ff-only
+
+cd "$DEPLOY_DIR"
 
 echo "==> GHCR から最新イメージを pull"
 docker compose pull app nginx

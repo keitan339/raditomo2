@@ -10,8 +10,10 @@
 ```
 [ローカル開発] → git push main → GitHub Actions (テスト+ビルド+GHCR push)
                                             ↓
-                          [自宅] ./scripts/deploy.sh で pull & up -d
+                          [自宅] ./deployment/deploy.sh で pull & up -d
 ```
+
+サーバー上の操作は **すべて `deployment/` 配下で完結**する設計。`apps/`（ソース）と `infra/nginx/Dockerfile`（ビルド入力）はランタイム不要。
 
 GHCR に置かれるイメージ:
 
@@ -19,8 +21,6 @@ GHCR に置かれるイメージ:
 |---|---|
 | `ghcr.io/keitan339/raditomo-backend:latest` | Spring Boot JAR + ffmpeg + JRE |
 | `ghcr.io/keitan339/raditomo-web:latest` | Nginx + frontend dist + nginx 設定（テンプレート展開） |
-
-サーバー上ではローカルビルドは行わない。証明書・録音データ・DB は引き続きホストマウント。
 
 ## 前提条件
 
@@ -47,8 +47,10 @@ DNS とルーターの設定は **Let's Encrypt の HTTP-01 チャレンジで�
 
 ```bash
 git clone <repo-url> raditomo
-cd raditomo
+cd raditomo/deployment
 ```
+
+以降の手順はすべて `deployment/` 配下で実行する。
 
 ### 2. 環境変数ファイル作成
 
@@ -77,7 +79,7 @@ $EDITOR .env
 DNS とルーター設定が済んでいることを確認してから:
 
 ```bash
-./scripts/init-letsencrypt.sh raditomo.hidenv.com you@example.com
+./init-letsencrypt.sh raditomo.hidenv.com you@example.com
 ```
 
 スクリプトは以下を自動で行う:
@@ -90,10 +92,10 @@ DNS とルーター設定が済んでいることを確認してから:
 検証用に Let's Encrypt のステージング環境で先に試したい場合は末尾に `--staging` を付ける:
 
 ```bash
-./scripts/init-letsencrypt.sh raditomo.hidenv.com you@example.com --staging
+./init-letsencrypt.sh raditomo.hidenv.com you@example.com --staging
 ```
 
-ステージングで成功確認できたら `infra/nginx/certs` をクリアして本番取得を再実行する。
+ステージングで成功確認できたら `deployment/certs/` をクリアして本番取得を再実行する。
 
 ### 4. 全コンテナ起動
 
@@ -142,13 +144,13 @@ curl -I https://raditomo.hidenv.com/
 証明書更新後の Nginx リロード:
 
 ```bash
-0 4 * * * cd /path/to/raditomo && docker compose exec -T nginx nginx -s reload >> /var/log/nginx-reload.log 2>&1
+0 4 * * * cd /path/to/raditomo/deployment && docker compose exec -T nginx nginx -s reload >> /var/log/nginx-reload.log 2>&1
 ```
 
 DB バックアップ:
 
 ```bash
-0 3 * * * cd /path/to/raditomo && docker compose exec -T db pg_dump -U radiko radiko | gzip > /path/to/backups/raditomo-$(date +\%Y\%m\%d).sql.gz
+0 3 * * * cd /path/to/raditomo/deployment && docker compose exec -T db pg_dump -U radiko radiko | gzip > /path/to/backups/raditomo-$(date +\%Y\%m\%d).sql.gz
 ```
 
 ---
@@ -160,8 +162,8 @@ DB バックアップ:
 - [ ] Google OAuth クライアントの redirect URI 登録
 - [ ] Gmail アプリパスワード発行
 - [ ] GHCR イメージを **public** に設定（github.com/keitan339?tab=packages）
-- [ ] `.env` 完成（特に `JWT_SECRET` の生成、`APP_DOMAIN` / `APP_BASE_URL` のドメイン）
-- [ ] `init-letsencrypt.sh` 実行成功（`infra/nginx/certs/live/<domain>/fullchain.pem` 存在）
+- [ ] `deployment/.env` 完成（特に `JWT_SECRET` の生成、`APP_DOMAIN` / `APP_BASE_URL` のドメイン）
+- [ ] `init-letsencrypt.sh` 実行成功（`deployment/certs/live/<domain>/fullchain.pem` 存在）
 - [ ] `docker compose pull && docker compose up -d` で全コンテナ Healthy
 - [ ] 許可ユーザー追加（`cli users add`）
 - [ ] ブラウザでログイン → 番組表表示まで成功

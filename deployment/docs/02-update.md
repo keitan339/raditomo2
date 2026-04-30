@@ -7,16 +7,16 @@
 `main` への push が GitHub Actions でテスト緑 → GHCR にイメージ公開、まで自動。サーバー側はスクリプト1本:
 
 ```bash
-./scripts/deploy.sh
+./deployment/deploy.sh
 ```
 
-中身は以下と等価:
+中身は以下と等価（`deployment/` をカレントにして実行される）:
 
 ```bash
-git pull --ff-only            # docker-compose.yml や deploy.sh 自体の更新を反映
-docker compose pull app nginx # GHCR から最新イメージを取得
-docker compose up -d app nginx # ローリング再起動
-docker image prune -f         # 古いイメージを掃除
+git -C <repo_root> pull --ff-only   # docker-compose.yml や deploy.sh 自体の更新を反映
+docker compose pull app nginx       # GHCR から最新イメージを取得
+docker compose up -d app nginx      # ローリング再起動
+docker image prune -f               # 古いイメージを掃除
 ```
 
 DB スキーマ変更は Flyway が自動適用する（マイグレーションファイルはバックエンド image に同梱）。
@@ -34,7 +34,7 @@ DB スキーマ変更は Flyway が自動適用する（マイグレーション
 
 ### 特定のバージョンへロールバック
 
-`docker-compose.yml` の `:latest` を `:<コミット SHA>` に書き換えて `deploy.sh` 実行。GHCR には過去の `:<sha>` タグが残っているので任意の時点に戻せる。
+`deployment/docker-compose.yml` の `:latest` を `:<コミット SHA>` に書き換えて `deploy.sh` 実行。GHCR には過去の `:<sha>` タグが残っているので任意の時点に戻せる。
 
 ---
 
@@ -48,7 +48,7 @@ docker compose logs -f nginx        # アクセスログ
 docker compose logs -f certbot      # 証明書更新ログ
 ```
 
-`app` のログファイルは `./data/logs/` にも出力される（ローテーションは Spring 側に任せる）。
+`app` のログファイルは `deployment/data/logs/` にも出力される（ローテーションは Spring 側に任せる）。
 
 ### バッチ手動実行
 
@@ -80,11 +80,11 @@ docker compose run --rm app cli users list
 docker compose exec -T db pg_dump -U radiko radiko | gzip > backup-$(date +%Y%m%d).sql.gz
 ```
 
-cron などで日次実行を推奨。`./data/postgres` ディレクトリを丸ごと落とすバックアップでも可。
+cron などで日次実行を推奨。`deployment/data/postgres/` ディレクトリを丸ごと落とすバックアップでも可。
 
 ### 録音ファイル
 
-`./data/recordings/{userId}/` 配下に MP3 と HLS が格納される。容量逼迫時は古い番組を削除（Web の「ライブラリ」画面から削除可能、履歴は残る）。
+`deployment/data/recordings/{userId}/` 配下に MP3 と HLS が格納される。容量逼迫時は古い番組を削除（Web の「ライブラリ」画面から削除可能、履歴は残る）。
 
 ---
 
@@ -95,7 +95,7 @@ cron などで日次実行を推奨。`./data/postgres` ディレクトリを丸
 更新後は **Nginx をリロードしないと新しい証明書が読み込まれない**点に注意。初回セットアップの cron で日次リロードを仕込んでいる前提:
 
 ```cron
-0 4 * * * cd /path/to/raditomo && docker compose exec -T nginx nginx -s reload >> /var/log/nginx-reload.log 2>&1
+0 4 * * * cd /path/to/raditomo/deployment && docker compose exec -T nginx nginx -s reload >> /var/log/nginx-reload.log 2>&1
 ```
 
 更新が走ったかどうかは `docker compose logs certbot --tail 50` で確認できる。
@@ -111,7 +111,7 @@ cron などで日次実行を推奨。`./data/postgres` ディレクトリを丸
 
 ### Nginx が起動しない
 
-- 証明書ファイルが見当たらないケースが多い。`infra/nginx/certs/live/raditomo.hidenv.com/` の中身を確認
+- 証明書ファイルが見当たらないケースが多い。`deployment/certs/live/raditomo.hidenv.com/` の中身を確認
 - 初回は `init-letsencrypt.sh` を経由していないと仮証明書すら無いので失敗する
 
 ### Let's Encrypt のレート制限に達した

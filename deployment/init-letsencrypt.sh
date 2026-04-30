@@ -13,9 +13,12 @@
 #   3. certbot で本物の証明書を取得（webroot 認証）
 #   4. nginx をリロードして本物の証明書を読み込む
 #
-# 使い方:
-#   ./scripts/init-letsencrypt.sh raditomo.hidenv.com you@example.com [--staging]
+# 使い方（deployment/ ディレクトリで実行）:
+#   ./init-letsencrypt.sh raditomo.hidenv.com you@example.com [--staging]
 set -euo pipefail
+
+# このスクリプトのあるディレクトリ（= deployment/）を作業ディレクトリにする
+cd "$(dirname "$0")"
 
 DOMAIN="${1:?usage: $0 <domain> <email> [--staging]}"
 EMAIL="${2:?usage: $0 <domain> <email> [--staging]}"
@@ -24,7 +27,7 @@ if [ "${3-}" = "--staging" ]; then
   EXTRA_ARGS+=("--staging")
 fi
 
-CERT_DIR="./infra/nginx/certs"
+CERT_DIR="./certs"
 WEBROOT="./data/certbot/www"
 
 mkdir -p "$CERT_DIR/live/$DOMAIN" "$WEBROOT"

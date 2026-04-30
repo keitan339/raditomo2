@@ -6,7 +6,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./infra/nginx/certs:/etc/nginx/certs:ro
+      - ./certs:/etc/nginx/certs:ro
       - ./data/recordings:/data/recordings:ro
       - ./data/certbot/www:/var/www/certbot:ro
     depends_on:
@@ -74,7 +74,7 @@ services:
     image: certbot/certbot:latest
     restart: unless-stopped
     volumes:
-      - ./infra/nginx/certs:/etc/letsencrypt
+      - ./certs:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
     entrypoint: ["/bin/sh", "-c"]
     command: |

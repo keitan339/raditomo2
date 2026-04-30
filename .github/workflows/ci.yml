@@ -107,7 +107,7 @@ jobs:
       - run: echo "ST is run manually via workflow_dispatch (see scripts/st/)"
 
   # main への push でテスト全緑後、GHCR に backend / web イメージを push する。
-  # 自宅サーバーは scripts/deploy.sh で `docker compose pull && up -d` するだけで更新できる。
+  # 自宅サーバーは deployment/deploy.sh で `docker compose pull && up -d` するだけで更新できる。
   build-and-push:
     name: Build & Push images to GHCR
     runs-on: ubuntu-latest

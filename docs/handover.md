@@ -38,8 +38,8 @@
 ### 運用ドキュメント
 | ファイル | 内容 |
 |---------|------|
-| `docs/deployment/01-initial-setup.md` | 初回デプロイ手順（前提・セットアップ・チェックリスト） |
-| `docs/deployment/02-update.md` | 2回目以降の更新フロー・日常運用・証明書更新・トラブルシュート |
+| `deployment/docs/01-initial-setup.md` | 初回デプロイ手順（前提・セットアップ・チェックリスト） |
+| `deployment/docs/02-update.md` | 2回目以降の更新フロー・日常運用・証明書更新・トラブルシュート |
 
 ### 過去フェーズ
 | ファイル | 内容 |
@@ -81,7 +81,7 @@
 ### フェーズ1: プロジェクトスケルトン
 1. Maven プロジェクト初期化（`pom.xml`、依存関係）
 2. Vite + React + TypeScript プロジェクト初期化（`package.json`）
-3. Docker Compose 雛形（`docker-compose.yml`、`.env.example`）
+3. Docker Compose 雛形（`deployment/docker-compose.yml`、`deployment/.env.example`）
 4. CI 雛形（`.github/workflows/ci.yml`）
 5. Flyway 初期マイグレーション（`V1__initial_schema.sql`、`V2__seed_master_data.sql`）
 
