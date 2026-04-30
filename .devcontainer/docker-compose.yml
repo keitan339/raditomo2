@@ -47,16 +47,6 @@ services:
     depends_on:
       - db
 
-  smtp:
-    image: mailhog/mailhog:v1.0.1
-
-  # ローカル開発用 OIDC IdP（Keycloak）
-  # - realm-export.json をイメージに焼き込んで起動時に自動インポート（GUI 操作不要）
-  # - network_mode: service:dev で dev コンテナとネットワーク名前空間を共有
-  #   → dev コンテナから localhost:18080 で到達できる
-  #   → VS Code は dev コンテナの 18080 を通常の forwardPorts で中継できる
-  #   → backend / browser / mock すべて http://localhost:18080 で統一
-  # - id_token の iss は KC_HOSTNAME で固定
   keycloak:
     build:
       context: ./keycloak

@@ -1,0 +1,51 @@
+{
+  "name": "raditomo2",
+
+  // DockerComposeのファイルパス
+  "dockerComposeFile": ["./docker-compose.yml"],
+
+  // PortForwarding
+  "forwardPorts": [5173, 8080, 18080, "db-viewer:8030"],
+  "portsAttributes": {
+    "5173": {
+      "label": "vite"
+    },
+    "8080": {
+      "label": "spring-boot"
+    },
+    "18080": {
+      "label": "keycloak"
+    },
+    "db-viewer:8030": {
+      "label": "db-viewer"
+    }
+  },
+
+  // ホスト側とコンテナ側の環境を合わせるためにenvファイルを作成
+  "initializeCommand": "./.devcontainer/env.sh",
+
+  // VSCodeの接続先サービス
+  "service": "dev",
+
+  // ワークスペースのマウント設定
+  "workspaceFolder": "/workspace",
+
+  // IDE用のカスタマイズ設定
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscode-icons-team.vscode-icons",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "Anthropic.claude-code",
+        "wayou.vscode-todo-highlight",
+        "ms-azuretools.vscode-docker",
+        "ms-azuretools.vscode-containers"
+      ],
+      // VSCodeの設定 (settings.json)
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash" // デフォルトシェル
+      }
+    }
+  }
+}
