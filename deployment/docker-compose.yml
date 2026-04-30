@@ -1,3 +1,5 @@
+name: raditomo
+
 services:
   nginx:
     image: ghcr.io/keitan339/raditomo-web:latest
