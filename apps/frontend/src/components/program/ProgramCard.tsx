@@ -19,9 +19,13 @@ export function ProgramCard({ program, onClick, dense }: Props) {
     <Card
       variant="outlined"
       sx={{
+        // 登録済みだけ青枠（primary.main の太線 + 薄い青背景）。
+        // 過去/未来は背景色（grey.100 / background.paper）とチップで区別する。
         borderColor: isRegistered ? 'primary.main' : palette.borderColor,
         borderWidth: isRegistered ? 2 : 1,
-        bgcolor: palette.bg,
+        bgcolor: isRegistered
+          ? (theme) => `${theme.palette.primary.main}14` // 約 8% アルファ
+          : palette.bg,
       }}
     >
       <CardActionArea onClick={() => onClick?.(program)} sx={{ p: dense ? 1 : 1.5 }}>
@@ -77,7 +81,9 @@ export function ProgramCard({ program, onClick, dense }: Props) {
 
 function pickPalette(p: ProgramItem) {
   if (p.isPast) {
-    return { bg: 'grey.50', borderColor: 'divider' as const };
+    // 放送済み: 落ち着いたグレー背景 + 中立色の枠
+    return { bg: 'grey.100', borderColor: 'divider' as const };
   }
-  return { bg: 'background.paper', borderColor: 'info.light' as const };
+  // 未来: 白背景 + 中立色の枠（青系は登録済みの目印として温存）
+  return { bg: 'background.paper', borderColor: 'divider' as const };
 }
