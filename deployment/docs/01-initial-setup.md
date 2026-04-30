@@ -120,14 +120,16 @@ docker compose up -d
 このアプリは許可リスト方式。Google アカウントのメールを事前に追加する:
 
 ```bash
-docker compose run --rm app cli users add you@gmail.com
+./raditomo users add you@gmail.com
 ```
+
+`./raditomo` は `deployment/` に置かれた CLI ラッパー（`docker compose exec app java -jar /app/app.jar cli` をラップ）。`deployment/` ディレクトリで実行する。
 
 サブコマンド:
 
 ```bash
-docker compose run --rm app cli users list
-docker compose run --rm app cli users remove you@gmail.com
+./raditomo users list
+./raditomo users remove you@gmail.com
 ```
 
 ### 6. 動作確認
@@ -165,7 +167,7 @@ DB バックアップ:
 - [ ] `deployment/.env` 完成（特に `JWT_SECRET` の生成、`APP_DOMAIN` / `APP_BASE_URL` のドメイン）
 - [ ] `init-letsencrypt.sh` 実行成功（`deployment/certs/live/<domain>/fullchain.pem` 存在）
 - [ ] `docker compose pull && docker compose up -d` で全コンテナ Healthy
-- [ ] 許可ユーザー追加（`cli users add`）
+- [ ] 許可ユーザー追加（`./raditomo users add`）
 - [ ] ブラウザでログイン → 番組表表示まで成功
 - [ ] cron に Nginx リロード（証明書更新後の反映用）追加
 - [ ] cron に DB バックアップ追加

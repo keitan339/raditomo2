@@ -60,7 +60,7 @@
 | Auth | Google OAuth 2.0 + JWT (HS256, 24h, リフレッシュトークンなし, SessionStorage) |
 | 通知 | Gmail SMTP（アプリパスワード方式） |
 | バッチ | Spring Scheduler（cron `0 30 5 * * *` Asia/Tokyo） |
-| CLI | Picocli（ホストラッパー `./raditomo`） |
+| CLI | Picocli（ホストラッパー `deployment/raditomo`、`deployment/` で実行） |
 | ID3 | ffmpeg `-metadata`（ID3v2.3）。Duration は MP3 フレームヘッダで再現。mp3agic は依存に残し将来必要時のみ使う |
 | HTTP（ラジコ） | Java 21 標準 HttpClient + Virtual Threads |
 | MP3 | 128 kbps CBR |
@@ -89,7 +89,7 @@
 6. JPA Entity / Repository（全テーブル）
 7. Google OAuth + JWT 認証（`/api/auth/*`）
 8. mock-oauth2-server を IT で使えるようにする
-9. ユーザー許可リスト CLI（`./raditomo users add/remove/list`）
+9. ユーザー許可リスト CLI（`deployment/raditomo users add/remove/list`）
 10. SecurityConfig（認証必須エンドポイント設定）
 
 ### フェーズ3: ラジコ連携

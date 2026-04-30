@@ -77,7 +77,7 @@ Spring Boot アプリは1つの Jar から複数モードで起動可能：
 
 ### ホストラッパースクリプト
 
-リポジトリ直下に `raditomo` シェルスクリプトを配置し、`docker compose exec` をラップする：
+`deployment/raditomo` シェルスクリプトを配置し、`docker compose exec` をラップする（同階層の `docker-compose.yml` を参照）：
 
 ```bash
 #!/bin/bash
@@ -85,8 +85,9 @@ Spring Boot アプリは1つの Jar から複数モードで起動可能：
 exec docker compose exec app java -jar /app/app.jar --cli "$@"
 ```
 
-利用例：
+利用例（`deployment/` で実行）：
 ```bash
+cd deployment
 ./raditomo download-programs
 ./raditomo download-audio --date 20260424
 ./raditomo download --force

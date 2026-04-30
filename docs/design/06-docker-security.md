@@ -93,8 +93,9 @@ EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
-CLI 実行用（ホストのラッパースクリプト経由）:
+CLI 実行用（`deployment/` ディレクトリでラッパースクリプト経由）:
 ```bash
+cd deployment
 ./raditomo download                       # F4→F2 一括
 ./raditomo download-programs              # F4 単体
 ./raditomo download-audio --date 20260424 # F2 単体

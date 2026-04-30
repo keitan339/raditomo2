@@ -52,12 +52,12 @@ docker compose logs -f certbot      # 証明書更新ログ
 
 ### バッチ手動実行
 
-CLI から（管理用）:
+`deployment/` ディレクトリでラッパースクリプトから:
 
 ```bash
-docker compose run --rm app cli download                  # F4 → F2 一括
-docker compose run --rm app cli download-programs         # F4 のみ
-docker compose run --rm app cli download-audio --date 20260424 [--force]
+./raditomo download                       # F4 → F2 一括
+./raditomo download-programs              # F4 のみ
+./raditomo download-audio --date 20260424 [--force]
 ```
 
 Web からは「設定」画面の下部にバッチ手動実行 UI がある。
@@ -69,9 +69,9 @@ Web からは「設定」画面の下部にバッチ手動実行 UI がある。
 ### 許可ユーザー追加・削除
 
 ```bash
-docker compose run --rm app cli users add another@gmail.com
-docker compose run --rm app cli users remove another@gmail.com
-docker compose run --rm app cli users list
+./raditomo users add another@gmail.com
+./raditomo users remove another@gmail.com
+./raditomo users list
 ```
 
 ### DB バックアップ
@@ -106,7 +106,7 @@ cron などで日次実行を推奨。`deployment/data/postgres/` ディレク�
 
 ### 403 Forbidden が出る
 
-- 許可リストに該当ユーザーがいない可能性。`docker compose run --rm app cli users list` で確認
+- 許可リストに該当ユーザーがいない可能性。`./raditomo users list` で確認
 - JWT がパスのユーザー ID と一致しない（HLS の場合）。再ログインで治ることが多い
 
 ### Nginx が起動しない
