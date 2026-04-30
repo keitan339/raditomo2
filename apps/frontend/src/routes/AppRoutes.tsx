@@ -4,6 +4,7 @@ import { AuthGuard } from '../components/common/AuthGuard';
 import { LoginPage } from '../pages/LoginPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
+import { ProgramTablePage } from '../pages/ProgramTablePage';
 
 export function AppRoutes() {
   return (
@@ -18,7 +19,7 @@ export function AppRoutes() {
           </AuthGuard>
         }
       >
-        <Route index element={<PlaceholderPage title="番組表" />} />
+        <Route index element={<ProgramTablePage />} />
         <Route path="registrations" element={<PlaceholderPage title="登録一覧" />} />
         <Route path="library" element={<PlaceholderPage title="ライブラリ" />} />
         <Route path="library/:title" element={<PlaceholderPage title="ライブラリ - 番組" />} />
