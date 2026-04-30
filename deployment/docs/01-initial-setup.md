@@ -13,7 +13,7 @@
                           [自宅] ./deployment/deploy.sh で pull & up -d
 ```
 
-サーバー上の操作は **すべて `deployment/` 配下で完結**する設計。`apps/`（ソース）と `infra/nginx/Dockerfile`（ビルド入力）はランタイム不要。
+サーバー上の操作は **すべて `deployment/` 配下で完結**する設計。`apps/`（ソース）と `build/`（Dockerfile / nginx テンプレート）はランタイム不要。
 
 GHCR に置かれるイメージ:
 

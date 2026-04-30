@@ -129,6 +129,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: apps/backend
+          file: build/backend/Dockerfile
           push: true
           tags: |
             ghcr.io/keitan339/raditomo-backend:latest
@@ -139,8 +140,11 @@ jobs:
       - name: Build & Push web
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: infra/nginx/Dockerfile
+          context: apps/frontend
+          file: build/web/Dockerfile
+          # nginx テンプレートを名前付きコンテキストで渡す（Buildx の機能）
+          build-contexts: |
+            nginx-templates=build/web/templates
           push: true
           tags: |
             ghcr.io/keitan339/raditomo-web:latest

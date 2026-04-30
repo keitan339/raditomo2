@@ -27,8 +27,8 @@ DB スキーマ変更は Flyway が自動適用する（マイグレーション
 
 1. backend UT/IT・frontend UT・Playwright スモークが全緑になるのを待つ
 2. GHCR にログイン（`GITHUB_TOKEN`）
-3. `apps/backend/Dockerfile` から `raditomo-backend` を build & push（`:latest` と `:<sha>`）
-4. `infra/nginx/Dockerfile` から `raditomo-web` を build & push（同上）
+3. `build/backend/Dockerfile` から `raditomo-backend` を build & push（`:latest` と `:<sha>`）
+4. `build/web/Dockerfile` から `raditomo-web` を build & push（同上、nginx テンプレートは build-contexts で渡す）
 
 イメージタグ `:<sha>` は固定参照したい時用（普段は `:latest` で十分）。
 
