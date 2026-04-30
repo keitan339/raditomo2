@@ -24,6 +24,7 @@ public class RecordingController {
 
     private final DownloadHistoryRepository historyRepository;
     private final RecordingService recordingService;
+    private final RecordingTitleGrouper titleGrouper;
     private final StationRepository stationRepository;
 
     private String stationNameOf(String stationId) {
@@ -37,7 +38,7 @@ public class RecordingController {
         // 例: 「らじらー！　サンデー　8時台 ...」「同 9時台 ...」「同 10時台 ...」 → 1グループ
         var byKey = new java.util.LinkedHashMap<String, RecordingGroupResponse>();
         for (DownloadHistory h : historyRepository.findAvailableRecordings(userId)) {
-            String key = RecordingTitleGrouper.groupKey(h.getProgramTitle());
+            String key = titleGrouper.groupKey(h.getProgramTitle());
             RecordingGroupResponse cur = byKey.get(key);
             if (cur == null) {
                 byKey.put(key, new RecordingGroupResponse(key, 1, h.getBroadcastStartAt()));
@@ -60,7 +61,7 @@ public class RecordingController {
         // title は groups エンドポイントで返したグループキー。
         // 各履歴のタイトルをグループキー化して、リクエストの title と一致するものを返す。
         return historyRepository.findAvailableRecordings(userId).stream()
-                .filter(h -> title.equals(RecordingTitleGrouper.groupKey(h.getProgramTitle())))
+                .filter(h -> title.equals(titleGrouper.groupKey(h.getProgramTitle())))
                 .map(h -> RecordingResponse.from(
                         h, stationNameOf(h.getStationId()),
                         recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))

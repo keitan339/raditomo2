@@ -32,15 +32,32 @@ public class RecordingService {
     private final PlaybackPositionRepository positionRepository;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Value("${raditomo.recordings-base-path}")
+    private String recordingsBasePath;
+
     public Optional<DownloadHistory> findOwnedById(Long userId, Long historyId) {
         return historyRepository.findById(historyId).filter(h -> h.getUserId().equals(userId));
     }
 
     /**
      * Nginx の location ~ ^/hls/(\d+)/(.+)$ にマッピングした URL を返す。
-     * 認証は Nginx の auth_request → /api/internal/auth-hls で行う。
+     *
+     * 実ファイル位置（h.hlsPath）からの相対パスをそのまま URL にすることで、
+     * フォルダ命名規則の変更（タイトル → グループキー）後でも既存録音の URL が
+     * 維持される。
      */
     public String hlsUrl(DownloadHistory h) {
+        String hlsPath = h.getHlsPath();
+        if (hlsPath != null) {
+            String prefix = recordingsBasePath.replaceAll("/+$", "")
+                    + "/" + h.getUserId() + "/hls/";
+            int idx = hlsPath.indexOf(prefix);
+            if (idx >= 0) {
+                String rel = hlsPath.substring(idx + prefix.length());
+                return "/hls/" + h.getUserId() + "/" + rel;
+            }
+        }
+        // hlsPath 未設定 / 想定外形式の場合は旧来の組み立てにフォールバック
         String title = Sanitizer.forFileName(h.getProgramTitle());
         String dt = DT_FMT.format(h.getBroadcastStartAt().toInstant());
         return "/hls/" + h.getUserId() + "/" + title + "/" + dt + "/playlist.m3u8";

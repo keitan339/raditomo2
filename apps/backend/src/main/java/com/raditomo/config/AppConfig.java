@@ -1,6 +1,7 @@
 package com.raditomo.config;
 
 import com.raditomo.auth.service.GoogleOAuthProperties;
+import com.raditomo.history.RecordingProperties;
 import com.raditomo.notification.NotificationProperties;
 import com.raditomo.radiko.RadikoProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,7 +13,9 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 
 @Configuration
-@EnableConfigurationProperties({GoogleOAuthProperties.class, RadikoProperties.class, NotificationProperties.class})
+@EnableConfigurationProperties({
+        GoogleOAuthProperties.class, RadikoProperties.class,
+        NotificationProperties.class, RecordingProperties.class})
 public class AppConfig {
 
     @Bean

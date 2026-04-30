@@ -5,6 +5,7 @@ import com.raditomo.common.util.Sanitizer;
 import com.raditomo.history.entity.DownloadHistory;
 import com.raditomo.history.entity.DownloadStatus;
 import com.raditomo.history.repository.DownloadHistoryRepository;
+import com.raditomo.history.service.RecordingTitleGrouper;
 import com.raditomo.radiko.download.RadikoTimefreeDownloader;
 import com.raditomo.radiko.encode.HlsConverter;
 import com.raditomo.radiko.encode.Mp3Encoder;
@@ -61,6 +62,7 @@ public class TimefreeDownloadService {
     private final DownloadHistoryRepository historyRepository;
     private final DownloadRegistrationRepository registrationRepository;
     private final StationRepository stationRepository;
+    private final RecordingTitleGrouper titleGrouper;
     private final Clock clock;
 
     @Value("${raditomo.recordings-base-path}")
@@ -153,17 +155,22 @@ public class TimefreeDownloadService {
     }
 
     Path mp3Path(DownloadCandidate c) {
-        String title = Sanitizer.forFileName(c.title());
+        // フォルダ名はグループキー（「○時台」「(N)」等を取り除いた共通名）。
+        // ファイル名は実タイトルを残し、同じグループ内でも放送回ごとに区別できるようにする。
+        String folder = Sanitizer.forFileName(titleGrouper.groupKey(c.title()));
+        String filename = Sanitizer.forFileName(c.title());
         String dt = PATH_DATETIME.format(c.broadcastStartAt().toInstant());
         return Path.of(recordingsBasePath, String.valueOf(c.userId()),
-                "mp3", title, title + "_" + dt + ".mp3");
+                "mp3", folder, filename + "_" + dt + ".mp3");
     }
 
     Path hlsDir(DownloadCandidate c) {
-        String title = Sanitizer.forFileName(c.title());
+        String folder = Sanitizer.forFileName(titleGrouper.groupKey(c.title()));
+        String filename = Sanitizer.forFileName(c.title());
         String dt = PATH_DATETIME.format(c.broadcastStartAt().toInstant());
+        // グループフォルダの中で「番組タイトル_放送日時」のサブフォルダを作る。
         return Path.of(recordingsBasePath, String.valueOf(c.userId()),
-                "hls", title, dt);
+                "hls", folder, filename + "_" + dt);
     }
 
     private void recordSuccess(DownloadCandidate c, Path mp3, Path hlsDir, long durationMillis, long fileSize) {
