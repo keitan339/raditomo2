@@ -5,6 +5,9 @@ import { LoginPage } from '../pages/LoginPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { ProgramTablePage } from '../pages/ProgramTablePage';
+import { RegistrationsPage } from '../pages/RegistrationsPage';
+import { HistoryPage } from '../pages/HistoryPage';
+import { SettingsPage } from '../pages/SettingsPage';
 
 export function AppRoutes() {
   return (
@@ -20,12 +23,12 @@ export function AppRoutes() {
         }
       >
         <Route index element={<ProgramTablePage />} />
-        <Route path="registrations" element={<PlaceholderPage title="登録一覧" />} />
+        <Route path="registrations" element={<RegistrationsPage />} />
         <Route path="library" element={<PlaceholderPage title="ライブラリ" />} />
         <Route path="library/:title" element={<PlaceholderPage title="ライブラリ - 番組" />} />
         <Route path="player/:historyId" element={<PlaceholderPage title="プレイヤー" />} />
-        <Route path="history" element={<PlaceholderPage title="履歴" />} />
-        <Route path="settings" element={<PlaceholderPage title="設定" />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

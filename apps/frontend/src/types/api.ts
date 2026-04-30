@@ -3,6 +3,7 @@
 export type RegistrationType = 'ONCE' | 'WEEKLY';
 export type RegistrationStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED';
 export type DownloadStatus = 'SUCCESS' | 'FAILED' | 'EXPIRED';
+export const DOWNLOAD_STATUSES: DownloadStatus[] = ['SUCCESS', 'FAILED', 'EXPIRED'];
 export type BatchType = 'F4' | 'F2' | 'F4_F2';
 export type BatchStatus = 'RUNNING' | 'SUCCESS' | 'PARTIAL_FAILURE' | 'FAILED';
 
