@@ -3,3 +3,8 @@ target/
 *.class
 HELP.md
 logs/
+
+# ローカル開発（mvn spring-boot:run）の実行時データ。
+# application.yml のデフォルト ./data/recordings, ./data/xml が
+# CWD = apps/backend で解決されてここに作られる。
+data/
