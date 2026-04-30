@@ -30,7 +30,7 @@ const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export function ProgramDetailDialog({ open, programId, fallback, onClose }: Props) {
   const qc = useQueryClient();
-  const [type, setType] = useState<RegistrationType>('ONCE');
+  const [type, setType] = useState<RegistrationType>('WEEKLY');
   const [error, setError] = useState<string | null>(null);
 
   const { data: detail, isLoading } = useQuery({
@@ -45,7 +45,7 @@ export function ProgramDetailDialog({ open, programId, fallback, onClose }: Prop
 
   useEffect(() => {
     if (open) {
-      setType(registration?.type ?? 'ONCE');
+      setType(registration?.type ?? 'WEEKLY');
       setError(null);
     }
   }, [open, registration?.type]);
@@ -124,12 +124,12 @@ export function ProgramDetailDialog({ open, programId, fallback, onClose }: Prop
                   登録方法
                 </Typography>
                 <RadioGroup value={type} onChange={(e) => setType(e.target.value as RegistrationType)}>
-                  <FormControlLabel value="ONCE" control={<Radio />} label="一回限り" />
                   <FormControlLabel
                     value="WEEKLY"
                     control={<Radio />}
                     label={`毎週（${dowLabel}曜 ${formatRange(display.broadcastStartAt, display.broadcastEndAt)}）`}
                   />
+                  <FormControlLabel value="ONCE" control={<Radio />} label="一回限り" />
                 </RadioGroup>
               </Box>
             ) : (

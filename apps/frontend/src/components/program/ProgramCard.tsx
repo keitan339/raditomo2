@@ -22,6 +22,8 @@ export function ProgramCard({ program, onClick, dense }: Props) {
         // 過去/未来は背景色（grey.100 / background.paper）と「放送済」チップで区別する。
         borderColor: palette.borderColor,
         borderWidth: 1,
+        // 番組表は升目表示なので角丸は不要
+        borderRadius: 0,
         bgcolor: isRegistered
           ? (theme) => `${theme.palette.primary.main}14` // 約 8% アルファ
           : palette.bg,
@@ -71,16 +73,31 @@ export function ProgramCard({ program, onClick, dense }: Props) {
               )}
             </Stack>
           )}
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={0.5}
+            alignItems="flex-start"
+            sx={{ width: '100%', pr: dense && isRegistered ? 0.75 : 0 }}
+          >
             <Typography
               variant={dense ? 'caption' : 'subtitle2'}
-              sx={{ fontWeight: 600, flexGrow: 1 }}
-              noWrap
+              sx={{
+                fontWeight: 600,
+                flexGrow: 1,
+                minWidth: 0,
+                // 折り返しを許可し、最大3行で省略する。
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                wordBreak: 'break-word',
+                lineHeight: 1.3,
+              }}
             >
               {program.title}
             </Typography>
             {dense && isRegistered && (
-              <StarIcon fontSize="small" color="primary" />
+              <StarIcon fontSize="small" color="primary" sx={{ flexShrink: 0, mt: '1px' }} />
             )}
           </Stack>
           {!dense && program.performers && (

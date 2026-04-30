@@ -18,7 +18,7 @@ const HOURS = Array.from({ length: 25 }, (_, i) => 5 + i); // 5:00〜29:00
  */
 export function ProgramGrid({ stations, onSelect }: Props) {
   return (
-    <Box sx={{ overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1 }}>
+    <Box sx={{ overflow: 'auto', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', minWidth: 'fit-content' }}>
         <Box sx={{ width: 64, flexShrink: 0, position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper' }}>
           <Box sx={{ height: 48, borderBottom: 1, borderColor: 'divider' }} />
@@ -101,8 +101,8 @@ export function ProgramGrid({ stations, onSelect }: Props) {
                         top: (top * HOUR_HEIGHT) / 60,
                         // 番組時間に厳密に比例した高さで配置（実放送終了時間まで描画）。
                         height: (dur * HOUR_HEIGHT) / 60,
-                        left: 4,
-                        right: 4,
+                        left: 0,
+                        right: 0,
                         overflow: 'hidden',
                       }}
                     >
