@@ -16,6 +16,9 @@ data/postgres/
 # TLS 証明書（Let's Encrypt 取得後）
 infra/nginx/certs/
 
+# Playwright MCP の実行時アーティファクト（console ログ・スナップショット等）
+.playwright-mcp/
+
 # IDE
 .idea/
 *.iml
