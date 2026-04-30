@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import type { ProgramItem, StationGroup } from '../../types/api';
 import { ProgramCard } from './ProgramCard';
 
@@ -8,7 +8,8 @@ interface Props {
 }
 
 const COLUMN_WIDTH = 220;
-const HOUR_HEIGHT = 96; // px / 1時間（30分番組で 48px → タイトル 1 行が収まる）
+const HOUR_HEIGHT = 144; // px / 1時間
+const MIN_DURATION_MIN = 10; // 10分未満の番組はグリッドに表示しない
 const HOURS = Array.from({ length: 25 }, (_, i) => 5 + i); // 5:00〜29:00
 
 /**
@@ -85,28 +86,30 @@ export function ProgramGrid({ stations, onSelect }: Props) {
                   }}
                 />
               ))}
-              {st.programs.map((p) => {
-                const top = minutesFromBroadcastStart(p.broadcastStartAt);
-                const dur = durationMinutes(p.broadcastStartAt, p.broadcastEndAt);
-                return (
-                  <Box
-                    key={p.id}
-                    sx={{
-                      position: 'absolute',
-                      top: (top * HOUR_HEIGHT) / 60,
-                      // 番組時間に厳密に比例。短い番組ははみ出ない範囲で切り詰める。
-                      height: (dur * HOUR_HEIGHT) / 60,
-                      left: 4,
-                      right: 4,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <Stack sx={{ height: '100%' }}>
+              {st.programs
+                .filter((p) =>
+                  durationMinutes(p.broadcastStartAt, p.broadcastEndAt) >= MIN_DURATION_MIN,
+                )
+                .map((p) => {
+                  const top = minutesFromBroadcastStart(p.broadcastStartAt);
+                  const dur = durationMinutes(p.broadcastStartAt, p.broadcastEndAt);
+                  return (
+                    <Box
+                      key={p.id}
+                      sx={{
+                        position: 'absolute',
+                        top: (top * HOUR_HEIGHT) / 60,
+                        // 番組時間に厳密に比例した高さで配置（実放送終了時間まで描画）。
+                        height: (dur * HOUR_HEIGHT) / 60,
+                        left: 4,
+                        right: 4,
+                        overflow: 'hidden',
+                      }}
+                    >
                       <ProgramCard program={p} onClick={onSelect} dense />
-                    </Stack>
-                  </Box>
-                );
-              })}
+                    </Box>
+                  );
+                })}
             </Box>
           </Box>
         ))}
@@ -126,5 +129,5 @@ function minutesFromBroadcastStart(iso: string): number {
 }
 
 function durationMinutes(startIso: string, endIso: string): number {
-  return Math.max(15, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000));
+  return Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000));
 }

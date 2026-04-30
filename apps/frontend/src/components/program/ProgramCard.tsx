@@ -28,9 +28,23 @@ export function ProgramCard({ program, onClick, dense }: Props) {
         boxShadow: isRegistered
           ? (theme) => `inset 0 0 0 1px ${theme.palette.primary.main}`
           : 'none',
+        // 親 Box の height（=放送時間に比例）にフィットさせる。
+        height: dense ? '100%' : 'auto',
       }}
     >
-      <CardActionArea onClick={() => onClick?.(program)} sx={{ p: dense ? 0.75 : 1.5, height: '100%' }}>
+      <CardActionArea
+        onClick={() => onClick?.(program)}
+        sx={{
+          p: dense ? 0.75 : 1.5,
+          height: '100%',
+          // ButtonBase は inline-flex で中央寄せがデフォルト。dense モードでは
+          // コンテンツを上揃えにして、放送開始時刻にタイトルが来るようにする。
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          justifyContent: 'flex-start',
+        }}
+      >
         <Stack spacing={dense ? 0.25 : 0.5}>
           {/* dense（グリッド）モードでは時刻/放送済チップは時間軸と背景色で代替するので省略 */}
           {!dense && (
