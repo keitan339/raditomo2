@@ -8,10 +8,16 @@
 #   - GHCR の raditomo-web イメージが既に CI で push されている（main に push 後）
 #
 # 流れ:
-#   1. 仮の自己署名証明書を生成（Nginx を起動するため）
+#   1. 仮の自己署名証明書を生成（Nginx を起動するため、初回のみ）
 #   2. nginx だけ起動して HTTP-01 チャレンジ用ディレクトリを公開
-#   3. certbot で本物の証明書を取得（webroot 認証）
-#   4. nginx をリロードして本物の証明書を読み込む
+#   3. 既存の certs/live/<domain>/ を削除（certbot の "live directory exists" を回避）
+#      nginx は既にメモリに cert を読み込んでいるので削除しても稼働継続
+#   4. certbot で本物の証明書を取得（webroot 認証）
+#   5. nginx をリロードして新しい証明書を読み込む
+#
+# staging → 本番への切り替えや再取得もこのスクリプトで可能。
+# ただし既に Let's Encrypt 証明書が取得済みのときに再実行すると
+# レート制限を消費する点に注意（通常は certbot コンテナの自動更新に任せる）。
 #
 # 使い方（deployment/ ディレクトリで実行）:
 #   ./init-letsencrypt.sh raditomo.hidenv.com you@example.com [--staging]
@@ -42,6 +48,14 @@ fi
 
 echo "==> Nginx を起動"
 docker compose up -d nginx
+
+# certbot は live/<domain>/ が既に存在するとエラー終了するため、ここで削除する。
+# nginx は起動時に cert を in-memory にロード済みなので、ファイルを消しても
+# reload するまで古い cert で稼働を続ける（証明書配信は停止しない）。
+echo "==> 既存の証明書ディレクトリを削除"
+rm -rf "$CERT_DIR/live/$DOMAIN" \
+       "$CERT_DIR/archive/$DOMAIN" \
+       "$CERT_DIR/renewal/$DOMAIN.conf"
 
 echo "==> certbot で本番証明書を取得"
 docker compose run --rm --entrypoint "" certbot \
