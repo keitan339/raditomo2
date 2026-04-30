@@ -20,7 +20,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RecordingResponse } from '../types/api';
 import { recordingsApi } from '../api/recordings';
-import { formatRange } from '../lib/time';
+import { formatBroadcastDateRange } from '../lib/time';
 
 export function LibraryDetailPage() {
   const { title: rawTitle } = useParams();
@@ -76,7 +76,7 @@ export function LibraryDetailPage() {
                 <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
                   <Chip size="small" variant="outlined" label={r.stationName} />
                   <Typography variant="caption" color="text.secondary">
-                    {formatRange(r.broadcastStartAt, r.broadcastEndAt)}
+                    {formatBroadcastDateRange(r.broadcastStartAt, r.broadcastEndAt)}
                   </Typography>
                   {!r.reDownloadable && (
                     <Chip size="small" color="warning" variant="outlined" label="期限切れ" />

@@ -14,7 +14,7 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { recordingsApi } from '../api/recordings';
 import { getAccessToken } from '../store/authStore';
-import { formatRange } from '../lib/time';
+import { formatBroadcastDateRange } from '../lib/time';
 
 const SAVE_INTERVAL_MS = 5000;
 
@@ -153,7 +153,7 @@ export function PlayerPage() {
           <CardContent>
             <Typography variant="h6">{recording.programTitle}</Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              {formatRange(recording.broadcastStartAt, recording.broadcastEndAt)} / {recording.stationName}
+              {formatBroadcastDateRange(recording.broadcastStartAt, recording.broadcastEndAt)} / {recording.stationName}
             </Typography>
             {recording.performers && (
               <Typography variant="body2" color="text.secondary" gutterBottom>

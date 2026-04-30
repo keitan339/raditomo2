@@ -24,7 +24,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DownloadStatus, HistoryItem } from '../types/api';
 import { historiesApi } from '../api/histories';
-import { formatRange } from '../lib/time';
+import { formatBroadcastDateRange } from '../lib/time';
 
 const STATUS_OPTIONS: { value: 'ALL' | DownloadStatus; label: string }[] = [
   { value: 'ALL', label: '全て' },
@@ -148,7 +148,7 @@ function HistoryCard({ item, onDelete }: { item: HistoryItem; onDelete: () => vo
           <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
             <Chip size="small" variant="outlined" label={item.stationName} />
             <Typography variant="caption" color="text.secondary">
-              {formatRange(item.broadcastStartAt, item.broadcastEndAt)}
+              {formatBroadcastDateRange(item.broadcastStartAt, item.broadcastEndAt)}
             </Typography>
             <Chip
               size="small"

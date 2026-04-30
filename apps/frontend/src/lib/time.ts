@@ -104,6 +104,28 @@ export function diffMinutes(startIso: string, endIso: string): number {
   return Math.max(0, Math.round((end - start) / 60_000));
 }
 
+/**
+ * ISO 文字列の JST 時刻から 5:00 区切りの「放送日」(YYYY-MM-DD) を導出する。
+ * 例: "2026-04-30T01:00:00+09:00" → "2026-04-29"（25:00 扱い）
+ */
+export function broadcastDateFromIso(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (!m) return '';
+  const [, y, mo, d, h] = m;
+  if (Number(h) < 5) {
+    const date = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+    date.setUTCDate(date.getUTCDate() - 1);
+    return formatYmd(date);
+  }
+  return `${y}-${mo}-${d}`;
+}
+
+/** "M/D (曜) HH:mm 〜 HH:mm" 形式で放送日と時刻を返す。 */
+export function formatBroadcastDateRange(startIso: string, endIso: string): string {
+  const date = broadcastDateFromIso(startIso);
+  return `${formatJpDate(date)} ${formatRange(startIso, endIso)}`;
+}
+
 /** 放送開始時刻 ISO から、放送日表示行で使う "HH:mm 〜 HH:mm" を返す。 */
 export function formatRange(startIso: string, endIso: string): string {
   return `${formatBroadcastTime(startIso)} 〜 ${formatBroadcastTime(endIso)}`;
