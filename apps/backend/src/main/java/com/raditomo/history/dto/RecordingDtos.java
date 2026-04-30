@@ -8,11 +8,7 @@ import java.time.OffsetDateTime;
 public class RecordingDtos {
 
     public record RecordingGroupResponse(
-            String title, long count, OffsetDateTime latestBroadcastAt) {
-        public static RecordingGroupResponse from(RecordingGroupRow row) {
-            return new RecordingGroupResponse(row.title(), row.count(), row.latestBroadcastAt());
-        }
-    }
+            String title, long count, OffsetDateTime latestBroadcastAt) {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record RecordingResponse(

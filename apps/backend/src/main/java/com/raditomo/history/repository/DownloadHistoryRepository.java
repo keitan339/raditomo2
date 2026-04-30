@@ -36,22 +36,17 @@ public interface DownloadHistoryRepository extends JpaRepository<DownloadHistory
     Optional<DownloadHistory> findFirstByUserIdAndStationIdAndBroadcastStartAtAndStatus(
             Long userId, String stationId, OffsetDateTime broadcastStartAt, DownloadStatus status);
 
-    List<DownloadHistory> findByUserIdAndProgramTitleOrderByBroadcastStartAtDesc(
-            Long userId, String programTitle);
-
     /**
-     * 番組名グルーピング表示用: タイトル別に件数と最新放送日時を集計。
+     * 録音ファイルが残っている SUCCESS 履歴を全件返す。
+     * 件数集計やグルーピングは呼び出し側（タイトル正規化が必要）で行う。
      */
     @org.springframework.data.jpa.repository.Query("""
-            SELECT new com.raditomo.history.dto.RecordingGroupRow(
-                h.programTitle, COUNT(h), MAX(h.broadcastStartAt))
-            FROM DownloadHistory h
+            SELECT h FROM DownloadHistory h
             WHERE h.userId = :userId
               AND h.status = com.raditomo.history.entity.DownloadStatus.SUCCESS
               AND h.fileDeletedAt IS NULL
-            GROUP BY h.programTitle
-            ORDER BY MAX(h.broadcastStartAt) DESC
+            ORDER BY h.broadcastStartAt DESC
             """)
-    List<com.raditomo.history.dto.RecordingGroupRow> findRecordingGroups(
+    List<DownloadHistory> findAvailableRecordings(
             @org.springframework.data.repository.query.Param("userId") Long userId);
 }
