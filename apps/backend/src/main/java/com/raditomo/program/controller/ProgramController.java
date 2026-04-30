@@ -46,7 +46,7 @@ public class ProgramController {
         List<Program> programs = programRepository.findByAreaAndDate(areaId, broadcastDate);
         Map<String, Station> stationsById = stationRepository.findByAreaIdOrderBySortOrderAsc(areaId).stream()
                 .collect(java.util.stream.Collectors.toMap(Station::getId, s -> s, (a, b) -> a, LinkedHashMap::new));
-        Map<Long, RegistrationRef> regRefs = buildRegistrationRefs(userId);
+        Map<Long, RegistrationRef> regRefs = matchRegistrations(userId, programs);
 
         OffsetDateTime now = OffsetDateTime.now(clock);
         Map<String, List<ProgramItem>> grouped = new LinkedHashMap<>();
@@ -76,7 +76,7 @@ public class ProgramController {
         if (q.isBlank()) return List.of();
         var pageable = PageRequest.of(page, size);
         List<Program> hits = programRepository.searchByAreaAndKeyword(areaId, q, pageable);
-        Map<Long, RegistrationRef> refs = buildRegistrationRefs(userId);
+        Map<Long, RegistrationRef> refs = matchRegistrations(userId, hits);
         OffsetDateTime now = OffsetDateTime.now(clock);
         return hits.stream()
                 .map(p -> ProgramDtos.toItem(p, now, JstTimes.expiresAt(p.getBroadcastStartAt()),
@@ -93,7 +93,7 @@ public class ProgramController {
                 .map(p -> {
                     Station st = stationRepository.findById(p.getStationId()).orElse(null);
                     OffsetDateTime now = OffsetDateTime.now(clock);
-                    RegistrationRef ref = buildRegistrationRefs(userId).get(p.getId());
+                    RegistrationRef ref = matchRegistrations(userId, List.of(p)).get(p.getId());
                     return ResponseEntity.ok(new ProgramDetailResponse(
                             p.getId(),
                             p.getStationId(),
@@ -112,23 +112,36 @@ public class ProgramController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    private Map<Long, RegistrationRef> buildRegistrationRefs(Long userId) {
-        // ユーザーの ACTIVE 登録を、登録時刻 → program との紐付けに使う。
-        // ONCE は (station, broadcast_start_at) で program を引いて registration_id を関連付ける。
-        // WEEKLY は (station, day_of_week, title) で複数 program に紐付く。
+    /**
+     * 与えた programs に対して、ユーザーの ACTIVE 登録から該当する RegistrationRef をマッピングする。
+     * - ONCE: (station, broadcast_start_at) 完全一致
+     * - WEEKLY: (station, day_of_week, title) 一致 → 該当する全番組をマーク
+     *   （タイトル一致は登録時のタイトルとの完全一致。番組変更による不一致は登録一覧 / 履歴で別途検知する）
+     */
+    private Map<Long, RegistrationRef> matchRegistrations(Long userId, List<Program> programs) {
         Map<Long, RegistrationRef> out = new HashMap<>();
+        if (programs.isEmpty()) return out;
+
         List<DownloadRegistration> regs = registrationRepository
                 .findByUserIdAndStatus(userId, RegistrationStatus.ACTIVE);
-        for (DownloadRegistration r : regs) {
-            if (r.getRegistrationType() == RegistrationType.ONCE) {
-                programRepository.findByStationIdAndBroadcastStartAt(r.getStationId(), r.getBroadcastStartAt())
-                        .ifPresent(p -> out.put(p.getId(), new RegistrationRef(r.getId(), r.getRegistrationType())));
-            } else {
-                programRepository.findFirstByStationIdAndBroadcastDateAndTitleOrderByBroadcastStartAtAsc(
-                                r.getStationId(),
-                                JstTimes.broadcastDate(r.getBroadcastStartAt()),
-                                r.getTitle())
-                        .ifPresent(p -> out.put(p.getId(), new RegistrationRef(r.getId(), r.getRegistrationType())));
+        if (regs.isEmpty()) return out;
+
+        for (Program p : programs) {
+            short pDow = JstTimes.dayOfWeek(p.getBroadcastDate());
+            for (DownloadRegistration r : regs) {
+                if (!r.getStationId().equals(p.getStationId())) continue;
+                if (r.getRegistrationType() == RegistrationType.ONCE) {
+                    if (p.getBroadcastStartAt().isEqual(r.getBroadcastStartAt())) {
+                        out.put(p.getId(), new RegistrationRef(r.getId(), r.getRegistrationType()));
+                        break;
+                    }
+                } else {
+                    Short rDow = r.getDayOfWeek();
+                    if (rDow != null && rDow == pDow && p.getTitle().equals(r.getTitle())) {
+                        out.put(p.getId(), new RegistrationRef(r.getId(), r.getRegistrationType()));
+                        break;
+                    }
+                }
             }
         }
         return out;

@@ -1,28 +1,58 @@
 // JST 固定で扱うラジコの「放送日」（5:00 区切り）ユーティリティ。
 // 文字列ベースで処理し、ローカル TZ に依存しない。
 
-const JST_OFFSET_MIN = 9 * 60;
+const JST_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
 
-function nowJst(): Date {
-  const now = new Date();
-  return new Date(now.getTime() + (JST_OFFSET_MIN + now.getTimezoneOffset()) * 60_000);
+interface JstParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+}
+
+function jstParts(at?: Date): JstParts {
+  const parts = JST_FORMATTER.formatToParts(at ?? new Date());
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  // Intl は 24h 設定でも `hour: '24'` を返すケースがあるため 0 に丸める。
+  const hour = Number(map.hour) % 24;
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour,
+    minute: Number(map.minute),
+  };
 }
 
 /** 引数（または現在時刻）を JST に変換し、5:00 区切りの「放送日」(YYYY-MM-DD) を返す。 */
 export function broadcastDate(at?: Date): string {
-  const jst = at ? new Date(at.getTime() + (JST_OFFSET_MIN + at.getTimezoneOffset()) * 60_000) : nowJst();
-  // 5:00 未満は前日扱い
-  if (jst.getUTCHours() < 5) {
-    jst.setUTCDate(jst.getUTCDate() - 1);
+  const p = jstParts(at);
+  // JST の 0:00〜4:59 は前日扱い
+  if (p.hour < 5) {
+    const d = new Date(Date.UTC(p.year, p.month - 1, p.day));
+    d.setUTCDate(d.getUTCDate() - 1);
+    return formatYmd(d);
   }
-  return formatYmd(jst);
+  return `${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
 }
 
-export function formatYmd(jst: Date): string {
-  const y = jst.getUTCFullYear();
-  const m = String(jst.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(jst.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+export function formatYmd(d: Date): string {
+  // d は parseYmd で生成した「UTC 0:00 の日付ホルダー」を想定。
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
 /** "YYYY-MM-DD" → "YYYYMMDD"。バックエンドの date クエリ用。 */
@@ -46,10 +76,10 @@ const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export function formatJpDate(ymd: string): string {
   const d = parseYmd(ymd);
-  const m = d.getUTCMonth() + 1;
+  const month = d.getUTCMonth() + 1;
   const day = d.getUTCDate();
   const dow = DOW_LABELS[d.getUTCDay()];
-  return `${m}/${day} (${dow})`;
+  return `${month}/${day} (${dow})`;
 }
 
 /**
@@ -57,17 +87,14 @@ export function formatJpDate(ymd: string): string {
  * (例: 25:00) に整形する。
  */
 export function formatBroadcastTime(isoString: string): string {
-  // タイムゾーン補正を避けるため、 ISO 文字列の先頭から直接抽出する。
+  // ISO 文字列の先頭から直接抽出（実 JST 時刻に対しタイムゾーン補正を経由しない）。
   const m = isoString.match(/T(\d{2}):(\d{2}):(\d{2})/);
   if (!m) return '';
   const startHour = Number(m[1]);
   const minute = m[2];
-  // この時刻が「broadcastDate ベース」だとしたら、5:00 未満は前日扱いになる
-  // → 表示上は +24 して 25:00 のように見せる必要がある。
-  // bdate = 番組DTOの broadcastDate を持っていない → 5:00 未満の hh は +24 と仮定する
-  // （ラジコの番組表データではこの仮定が成り立つ）
+  // 5:00 未満の時刻は深夜帯として +24 で表示（例: 01:00 → 25:00）
   const displayHour = startHour < 5 ? startHour + 24 : startHour;
-  return `${String(displayHour).padStart(2, '0')}:${minute}`;
+  return `${pad2(displayHour)}:${minute}`;
 }
 
 /** ISO の "+09:00" 部分を保ったまま、その時刻が start からの分数を返す。 */

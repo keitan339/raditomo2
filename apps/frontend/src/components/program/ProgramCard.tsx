@@ -1,6 +1,5 @@
 import { Box, Card, CardActionArea, Chip, Stack, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
-import ScheduleIcon from '@mui/icons-material/Schedule';
 import HistoryIcon from '@mui/icons-material/History';
 import type { ProgramItem } from '../../types/api';
 import { formatRange } from '../../lib/time';
@@ -19,56 +18,63 @@ export function ProgramCard({ program, onClick, dense }: Props) {
     <Card
       variant="outlined"
       sx={{
-        // 登録済みだけ青枠（primary.main の太線 + 薄い青背景）。
-        // 過去/未来は背景色（grey.100 / background.paper）とチップで区別する。
-        borderColor: isRegistered ? 'primary.main' : palette.borderColor,
-        borderWidth: isRegistered ? 2 : 1,
+        // 登録済みは青系の枠 + 薄い青背景（box-shadow で外側に追加し、レイアウトに影響しない）。
+        // 過去/未来は背景色（grey.100 / background.paper）と「放送済」チップで区別する。
+        borderColor: palette.borderColor,
+        borderWidth: 1,
         bgcolor: isRegistered
           ? (theme) => `${theme.palette.primary.main}14` // 約 8% アルファ
           : palette.bg,
+        boxShadow: isRegistered
+          ? (theme) => `inset 0 0 0 1px ${theme.palette.primary.main}`
+          : 'none',
       }}
     >
-      <CardActionArea onClick={() => onClick?.(program)} sx={{ p: dense ? 1 : 1.5 }}>
-        <Stack spacing={0.5}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="caption" color="text.secondary">
-              {formatRange(program.broadcastStartAt, program.broadcastEndAt)}
+      <CardActionArea onClick={() => onClick?.(program)} sx={{ p: dense ? 0.75 : 1.5, height: '100%' }}>
+        <Stack spacing={dense ? 0.25 : 0.5}>
+          {/* dense（グリッド）モードでは時刻/放送済チップは時間軸と背景色で代替するので省略 */}
+          {!dense && (
+            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+              <Typography variant="caption" color="text.secondary">
+                {formatRange(program.broadcastStartAt, program.broadcastEndAt)}
+              </Typography>
+              {program.isPast && (
+                <Chip
+                  size="small"
+                  color="default"
+                  icon={<HistoryIcon />}
+                  label="放送済"
+                  variant="outlined"
+                />
+              )}
+              {isRegistered && (
+                <Chip
+                  size="small"
+                  color="primary"
+                  icon={<StarIcon />}
+                  label={program.registration?.type === 'WEEKLY' ? '毎週' : '一回'}
+                />
+              )}
+            </Stack>
+          )}
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Typography
+              variant={dense ? 'caption' : 'subtitle2'}
+              sx={{ fontWeight: 600, flexGrow: 1 }}
+              noWrap
+            >
+              {program.title}
             </Typography>
-            {program.isPast ? (
-              <Chip
-                size="small"
-                color="default"
-                icon={<HistoryIcon />}
-                label="放送済"
-                variant="outlined"
-              />
-            ) : (
-              <Chip
-                size="small"
-                color="info"
-                icon={<ScheduleIcon />}
-                label="予定"
-                variant="outlined"
-              />
-            )}
-            {isRegistered && (
-              <Chip
-                size="small"
-                color="primary"
-                icon={<StarIcon />}
-                label={program.registration?.type === 'WEEKLY' ? '毎週' : '一回'}
-              />
+            {dense && isRegistered && (
+              <StarIcon fontSize="small" color="primary" />
             )}
           </Stack>
-          <Typography variant={dense ? 'body2' : 'subtitle2'} sx={{ fontWeight: 600 }} noWrap>
-            {program.title}
-          </Typography>
-          {program.performers && (
+          {!dense && program.performers && (
             <Typography variant="caption" color="text.secondary" noWrap>
               {program.performers}
             </Typography>
           )}
-          {!program.isWithinTimefreeWindow && program.isPast && (
+          {!dense && !program.isWithinTimefreeWindow && program.isPast && (
             <Box>
               <Chip size="small" color="warning" label="期限切れ" variant="outlined" />
             </Box>
@@ -84,6 +90,6 @@ function pickPalette(p: ProgramItem) {
     // 放送済み: 落ち着いたグレー背景 + 中立色の枠
     return { bg: 'grey.100', borderColor: 'divider' as const };
   }
-  // 未来: 白背景 + 中立色の枠（青系は登録済みの目印として温存）
+  // 未来: 白背景 + 中立色の枠
   return { bg: 'background.paper', borderColor: 'divider' as const };
 }

@@ -8,7 +8,7 @@ interface Props {
 }
 
 const COLUMN_WIDTH = 220;
-const HOUR_HEIGHT = 80; // px / 1時間
+const HOUR_HEIGHT = 96; // px / 1時間（30分番組で 48px → タイトル 1 行が収まる）
 const HOURS = Array.from({ length: 25 }, (_, i) => 5 + i); // 5:00〜29:00
 
 /**
@@ -91,9 +91,11 @@ export function ProgramGrid({ stations, onSelect }: Props) {
                     sx={{
                       position: 'absolute',
                       top: (top * HOUR_HEIGHT) / 60,
-                      height: Math.max(36, (dur * HOUR_HEIGHT) / 60),
+                      // 番組時間に厳密に比例。短い番組ははみ出ない範囲で切り詰める。
+                      height: (dur * HOUR_HEIGHT) / 60,
                       left: 4,
                       right: 4,
+                      overflow: 'hidden',
                     }}
                   >
                     <Stack sx={{ height: '100%' }}>
