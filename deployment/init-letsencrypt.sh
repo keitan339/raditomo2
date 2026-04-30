@@ -55,20 +55,26 @@ echo "==> Nginx を起動 / 再起動"
 docker compose up -d nginx
 docker compose restart nginx
 
-# certbot は live/<domain>/ が既に存在するとエラー終了するため、ここで削除する。
-# certbot が以前生成した cert ファイルは root 所有なのでホスト側 rm では消せない。
-# 同じ certbot コンテナ（root）を使って削除する。
-# nginx は起動時に cert を in-memory にロード済みなので、ファイルを消しても
-# reload するまで古い cert で稼働を続ける（証明書配信は停止しない）。
-echo "==> 既存の証明書ディレクトリを削除（certbot コンテナ経由）"
-docker compose run --rm --entrypoint "" certbot \
-  rm -rf "/etc/letsencrypt/live/$DOMAIN" \
-         "/etc/letsencrypt/archive/$DOMAIN" \
-         "/etc/letsencrypt/renewal/$DOMAIN.conf"
+# 既存の cert を全部削除（suffix 付き raditomo.hidenv.com-0001 等も含む）。
+# certbot は同名で再取得する際に衝突回避で suffix を付けるが、これがあると
+# 「Certificate not yet due for renewal」で本来の名前の cert が作られず
+# nginx が cert を見つけられないトラブルになる。
+# certbot コンテナ（root）で実行して permission 問題も回避。
+# nginx は起動時に cert を in-memory にロード済みなので、ファイル削除中も稼働継続。
+echo "==> 既存の証明書ディレクトリを削除（suffix 付きも含む）"
+docker compose run --rm --entrypoint sh certbot -c "
+  rm -rf /etc/letsencrypt/live/${DOMAIN}* \
+         /etc/letsencrypt/archive/${DOMAIN}* \
+         /etc/letsencrypt/renewal/${DOMAIN}*.conf
+"
 
+# --cert-name で suffix 無しの名前を強制指定。--force-renewal で
+# 万一の「not due」判定を抑止。
 echo "==> certbot で本番証明書を取得"
 docker compose run --rm --entrypoint "" certbot \
   certbot certonly \
+    --cert-name "$DOMAIN" \
+    --force-renewal \
     --webroot -w /var/www/certbot \
     -d "$DOMAIN" \
     --email "$EMAIL" \
