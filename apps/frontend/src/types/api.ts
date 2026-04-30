@@ -68,8 +68,11 @@ export interface RegistrationRef {
 
 export interface ProgramItem {
   id: number;
+  stationId: string;
+  stationName: string;
   title: string;
   performers: string | null;
+  broadcastDate: string;
   broadcastStartAt: string;
   broadcastEndAt: string;
   isPast: boolean;
@@ -89,8 +92,6 @@ export interface ProgramListResponse {
 }
 
 export interface ProgramDetailResponse extends ProgramItem {
-  stationId: string;
-  stationName: string;
   description: string | null;
   info: string | null;
   imageUrl: string | null;

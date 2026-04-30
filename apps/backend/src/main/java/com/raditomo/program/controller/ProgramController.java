@@ -52,7 +52,10 @@ public class ProgramController {
         Map<String, List<ProgramItem>> grouped = new LinkedHashMap<>();
         stationsById.keySet().forEach(id -> grouped.put(id, new ArrayList<>()));
         for (Program p : programs) {
-            ProgramItem item = ProgramDtos.toItem(p, now, JstTimes.expiresAt(p.getBroadcastStartAt()),
+            Station st = stationsById.get(p.getStationId());
+            String stationName = st != null ? st.getName() : p.getStationId();
+            ProgramItem item = ProgramDtos.toItem(p, stationName, now,
+                    JstTimes.expiresAt(p.getBroadcastStartAt()),
                     regRefs.get(p.getId()));
             grouped.computeIfAbsent(p.getStationId(), k -> new ArrayList<>()).add(item);
         }
@@ -77,9 +80,13 @@ public class ProgramController {
         var pageable = PageRequest.of(page, size);
         List<Program> hits = programRepository.searchByAreaAndKeyword(areaId, q, pageable);
         Map<Long, RegistrationRef> refs = matchRegistrations(userId, hits);
+        Map<String, String> stationNames = stationRepository.findByAreaIdOrderBySortOrderAsc(areaId).stream()
+                .collect(java.util.stream.Collectors.toMap(Station::getId, Station::getName, (a, b) -> a));
         OffsetDateTime now = OffsetDateTime.now(clock);
         return hits.stream()
-                .map(p -> ProgramDtos.toItem(p, now, JstTimes.expiresAt(p.getBroadcastStartAt()),
+                .map(p -> ProgramDtos.toItem(p,
+                        stationNames.getOrDefault(p.getStationId(), p.getStationId()),
+                        now, JstTimes.expiresAt(p.getBroadcastStartAt()),
                         refs.get(p.getId())))
                 .toList();
     }

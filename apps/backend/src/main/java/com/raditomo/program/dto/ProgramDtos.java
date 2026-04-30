@@ -21,8 +21,11 @@ public class ProgramDtos {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ProgramItem(
             Long id,
+            String stationId,
+            String stationName,
             String title,
             String performers,
+            LocalDate broadcastDate,
             OffsetDateTime broadcastStartAt,
             OffsetDateTime broadcastEndAt,
             boolean isPast,
@@ -49,11 +52,15 @@ public class ProgramDtos {
             RegistrationRef registration
     ) {}
 
-    public static ProgramItem toItem(Program p, OffsetDateTime now,
+    public static ProgramItem toItem(Program p, String stationName,
+                                     OffsetDateTime now,
                                      OffsetDateTime expiresAt,
                                      RegistrationRef ref) {
         return new ProgramItem(
-                p.getId(), p.getTitle(), p.getPerformers(),
+                p.getId(),
+                p.getStationId(), stationName,
+                p.getTitle(), p.getPerformers(),
+                p.getBroadcastDate(),
                 p.getBroadcastStartAt(), p.getBroadcastEndAt(),
                 !p.getBroadcastEndAt().isAfter(now),
                 now.isBefore(expiresAt),
