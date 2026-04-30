@@ -74,7 +74,7 @@ export function LibraryDetailPage() {
             >
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
-                  <Chip size="small" variant="outlined" label={r.stationId} />
+                  <Chip size="small" variant="outlined" label={r.stationName} />
                   <Typography variant="caption" color="text.secondary">
                     {formatRange(r.broadcastStartAt, r.broadcastEndAt)}
                   </Typography>

@@ -153,7 +153,7 @@ export function PlayerPage() {
           <CardContent>
             <Typography variant="h6">{recording.programTitle}</Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              {formatRange(recording.broadcastStartAt, recording.broadcastEndAt)} / {recording.stationId}
+              {formatRange(recording.broadcastStartAt, recording.broadcastEndAt)} / {recording.stationName}
             </Typography>
             {recording.performers && (
               <Typography variant="body2" color="text.secondary" gutterBottom>

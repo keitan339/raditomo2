@@ -18,6 +18,7 @@ public class RecordingDtos {
     public record RecordingResponse(
             Long historyId,
             String stationId,
+            String stationName,
             String programTitle,
             String performers,
             OffsetDateTime broadcastStartAt,
@@ -28,9 +29,12 @@ public class RecordingDtos {
             String hlsUrl,
             boolean reDownloadable
     ) {
-        public static RecordingResponse from(DownloadHistory h, String hlsUrl, boolean reDownloadable) {
+        public static RecordingResponse from(DownloadHistory h, String stationName,
+                                             String hlsUrl, boolean reDownloadable) {
             return new RecordingResponse(
-                    h.getId(), h.getStationId(), h.getProgramTitle(), h.getPerformers(),
+                    h.getId(), h.getStationId(),
+                    stationName != null ? stationName : h.getStationId(),
+                    h.getProgramTitle(), h.getPerformers(),
                     h.getBroadcastStartAt(), h.getBroadcastEndAt(),
                     h.getDurationSeconds(), h.getFileSizeBytes(),
                     h.getMp3Path(), hlsUrl, reDownloadable);

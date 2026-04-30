@@ -124,6 +124,7 @@ export interface BadgeResponse {
 export interface HistoryItem {
   id: number;
   stationId: string;
+  stationName: string;
   programTitle: string;
   performers: string | null;
   broadcastStartAt: string;
@@ -151,6 +152,7 @@ export interface RecordingGroupResponse {
 export interface RecordingResponse {
   historyId: number;
   stationId: string;
+  stationName: string;
   programTitle: string;
   performers: string | null;
   broadcastStartAt: string;

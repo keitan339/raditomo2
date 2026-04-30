@@ -13,6 +13,7 @@ public class HistoryDtos {
     public record HistoryItem(
             Long id,
             String stationId,
+            String stationName,
             String programTitle,
             String performers,
             OffsetDateTime broadcastStartAt,
@@ -22,9 +23,11 @@ public class HistoryDtos {
             OffsetDateTime attemptedAt,
             OffsetDateTime fileDeletedAt
     ) {
-        public static HistoryItem from(DownloadHistory h) {
+        public static HistoryItem from(DownloadHistory h, String stationName) {
             return new HistoryItem(
-                    h.getId(), h.getStationId(), h.getProgramTitle(), h.getPerformers(),
+                    h.getId(), h.getStationId(),
+                    stationName != null ? stationName : h.getStationId(),
+                    h.getProgramTitle(), h.getPerformers(),
                     h.getBroadcastStartAt(), h.getBroadcastEndAt(), h.getStatus(),
                     h.getErrorMessage(), h.getAttemptedAt(), h.getFileDeletedAt());
         }

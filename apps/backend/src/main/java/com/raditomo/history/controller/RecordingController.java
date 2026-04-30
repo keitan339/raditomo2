@@ -6,6 +6,7 @@ import com.raditomo.history.entity.DownloadStatus;
 import com.raditomo.history.entity.PlaybackPosition;
 import com.raditomo.history.repository.DownloadHistoryRepository;
 import com.raditomo.history.service.RecordingService;
+import com.raditomo.station.repository.StationRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,11 @@ public class RecordingController {
 
     private final DownloadHistoryRepository historyRepository;
     private final RecordingService recordingService;
+    private final StationRepository stationRepository;
+
+    private String stationNameOf(String stationId) {
+        return stationRepository.findById(stationId).map(s -> s.getName()).orElse(stationId);
+    }
 
     @GetMapping("/groups")
     public List<RecordingGroupResponse> groups(@AuthenticationPrincipal Long userId) {
@@ -39,7 +45,8 @@ public class RecordingController {
         return historyRepository.findByUserIdAndProgramTitleOrderByBroadcastStartAtDesc(userId, title).stream()
                 .filter(h -> h.getStatus() == DownloadStatus.SUCCESS && h.getFileDeletedAt() == null)
                 .map(h -> RecordingResponse.from(
-                        h, recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))
+                        h, stationNameOf(h.getStationId()),
+                        recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))
                 .toList();
     }
 
@@ -50,7 +57,8 @@ public class RecordingController {
         require(userId);
         return recordingService.findOwnedById(userId, historyId)
                 .map(h -> RecordingResponse.from(
-                        h, recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))
+                        h, stationNameOf(h.getStationId()),
+                        recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

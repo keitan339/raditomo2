@@ -6,6 +6,7 @@ import com.raditomo.history.dto.HistoryDtos.PageResponse;
 import com.raditomo.history.entity.DownloadHistory;
 import com.raditomo.history.entity.DownloadStatus;
 import com.raditomo.history.repository.DownloadHistoryRepository;
+import com.raditomo.station.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class HistoryController {
 
     private final DownloadHistoryRepository historyRepository;
+    private final StationRepository stationRepository;
     private final java.time.Clock clock;
 
     @GetMapping("/badge")
@@ -42,8 +44,13 @@ public class HistoryController {
         Page<DownloadHistory> hits = status == null
                 ? historyRepository.findByUserId(userId, pageable)
                 : historyRepository.findByUserIdAndStatus(userId, status, pageable);
+        var stationIds = hits.getContent().stream().map(DownloadHistory::getStationId).distinct().toList();
+        var nameByStationId = stationRepository.findAllById(stationIds).stream()
+                .collect(java.util.stream.Collectors.toMap(s -> s.getId(), s -> s.getName(), (a, b) -> a));
         return new PageResponse<>(
-                hits.getContent().stream().map(HistoryItem::from).toList(),
+                hits.getContent().stream()
+                        .map(h -> HistoryItem.from(h, nameByStationId.get(h.getStationId())))
+                        .toList(),
                 hits.getNumber(), hits.getSize(),
                 hits.getTotalElements(), hits.getTotalPages());
     }

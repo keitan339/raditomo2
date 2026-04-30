@@ -146,7 +146,7 @@ function HistoryCard({ item, onDelete }: { item: HistoryItem; onDelete: () => vo
         </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
-            <Chip size="small" variant="outlined" label={item.stationId} />
+            <Chip size="small" variant="outlined" label={item.stationName} />
             <Typography variant="caption" color="text.secondary">
               {formatRange(item.broadcastStartAt, item.broadcastEndAt)}
             </Typography>
