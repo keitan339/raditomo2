@@ -174,6 +174,15 @@ public class TimefreeDownloadService {
     }
 
     private void recordSuccess(DownloadCandidate c, Path mp3, Path hlsDir, long durationMillis, long fileSize) {
+        // 同じ放送の既存 SUCCESS 履歴は重複防止のため物理削除する
+        // （force=true 再実行や、過去にライブラリ削除された履歴 SUCCESS の置き換え）。
+        // FAILED / EXPIRED は失敗ログとして保持。
+        int removed = historyRepository.deleteByUserIdAndStationIdAndBroadcastStartAtAndStatus(
+                c.userId(), c.stationId(), c.broadcastStartAt(), DownloadStatus.SUCCESS);
+        if (removed > 0) {
+            log.info("Replaced {} existing SUCCESS history for stationId={} startAt={}",
+                    removed, c.stationId(), c.broadcastStartAt());
+        }
         DownloadHistory hist = DownloadHistory.builder()
                 .userId(c.userId())
                 .registrationId(c.registrationId())

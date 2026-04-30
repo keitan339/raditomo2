@@ -37,6 +37,15 @@ public interface DownloadHistoryRepository extends JpaRepository<DownloadHistory
             Long userId, String stationId, OffsetDateTime broadcastStartAt, DownloadStatus status);
 
     /**
+     * 同じ放送 (user × station × broadcastStartAt) の SUCCESS 履歴を物理削除する。
+     * F2 が新規 SUCCESS を INSERT する直前に呼び、過去の SUCCESS（再 DL 元）と
+     * 重複しないようにする。FAILED / EXPIRED は失敗ログとして残すので削除しない。
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    int deleteByUserIdAndStationIdAndBroadcastStartAtAndStatus(
+            Long userId, String stationId, OffsetDateTime broadcastStartAt, DownloadStatus status);
+
+    /**
      * 録音ファイルが残っている SUCCESS 履歴を全件返す。
      * 件数集計やグルーピングは呼び出し側（タイトル正規化が必要）で行う。
      */
