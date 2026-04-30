@@ -36,8 +36,11 @@ public class RecordingController {
         require(userId);
         // タイトルから「○時台...」「(N)」「Part N」「第N回」を取り除いたグループキーで集約。
         // 例: 「らじらー！　サンデー　8時台 ...」「同 9時台 ...」「同 10時台 ...」 → 1グループ
+        // また force 再実行で重複した履歴は (station, broadcastStartAt) 単位でデデュープする。
+        List<DownloadHistory> distinct = dedupePerBroadcast(
+                historyRepository.findAvailableRecordings(userId));
         var byKey = new java.util.LinkedHashMap<String, RecordingGroupResponse>();
-        for (DownloadHistory h : historyRepository.findAvailableRecordings(userId)) {
+        for (DownloadHistory h : distinct) {
             String key = titleGrouper.groupKey(h.getProgramTitle());
             RecordingGroupResponse cur = byKey.get(key);
             if (cur == null) {
@@ -60,12 +63,32 @@ public class RecordingController {
         require(userId);
         // title は groups エンドポイントで返したグループキー。
         // 各履歴のタイトルをグループキー化して、リクエストの title と一致するものを返す。
-        return historyRepository.findAvailableRecordings(userId).stream()
+        // force 再実行で同じ放送（同 station + 同 broadcastStartAt）の履歴が複数あった場合は
+        // 最新（最大 historyId）の 1 件だけ返す（実ファイルは同じ mp3 を共有しているため）。
+        var matched = historyRepository.findAvailableRecordings(userId).stream()
                 .filter(h -> title.equals(titleGrouper.groupKey(h.getProgramTitle())))
+                .toList();
+        return dedupePerBroadcast(matched).stream()
                 .map(h -> RecordingResponse.from(
                         h, stationNameOf(h.getStationId()),
                         recordingService.hlsUrl(h), recordingService.isReDownloadable(h)))
                 .toList();
+    }
+
+    /**
+     * 同じ放送（station_id + broadcast_start_at）の重複履歴を最新（id 大）の 1 件に絞る。
+     * F2 の force 再実行で同じ MP3 を上書きしながら history を新規 INSERT した結果の見た目重複を解消する。
+     */
+    private static List<DownloadHistory> dedupePerBroadcast(List<DownloadHistory> hits) {
+        var byBroadcast = new java.util.LinkedHashMap<String, DownloadHistory>();
+        for (DownloadHistory h : hits) {
+            String key = h.getStationId() + "|" + h.getBroadcastStartAt();
+            DownloadHistory cur = byBroadcast.get(key);
+            if (cur == null || h.getId() > cur.getId()) {
+                byBroadcast.put(key, h);
+            }
+        }
+        return List.copyOf(byBroadcast.values());
     }
 
     @GetMapping("/{historyId}")
