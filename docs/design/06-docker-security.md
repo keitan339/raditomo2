@@ -346,4 +346,4 @@ APP_BASE_URL=https://raditomo.hidenv.com
 - Let's Encrypt の **HTTP-01 チャレンジ**で証明書取得（443/80 ポート公開が前提）
 - ルーターのポート転送設定が必要（443・80）
 - **証明書自動更新**: `docker-compose.yml` に `certbot` サービスを常駐（12 時間ごとに `certbot renew --webroot` を実行、更新があれば証明書ファイルが置き換わる）
-- 初回証明書取得は `./scripts/init-letsencrypt.sh <domain> <email>` を使用。仮の自己署名証明書 → Nginx 起動 → certbot で本物取得 → reload までを自動化
+- 初回証明書取得は `./deployment/init-letsencrypt.sh <domain> <email>` を使用。仮の自己署名証明書 → Nginx 起動 → certbot で本物取得 → reload までを自動化

@@ -1,12 +1,13 @@
 # テスト戦略
 
-## テスト3層モデル
+## テスト2層モデル
 
 | 層 | 目的 | ブラウザ操作 | 外部サービス |
 |----|------|------------|-------------|
 | **UT** (単体テスト) | 単一クラス/メソッドの振る舞いを外部依存なしで検証 | なし | すべてモック |
 | **IT** (結合テスト) | 複数コンポーネント・複数層の結合動作を独自サービスで完結して検証。**Playwright によるブラウザE2Eを含む** | あり（Playwright） | 独自サービスで代替（GreenMail / mock-oauth2-server / WireMock / Testcontainers） |
-| **ST** (システムテスト) | 本番相当の環境で、実外部サービス（Google / Gmail / ラジコ）との接続を検証 | なし | 実 Google / 実 Gmail / 実ラジコ |
+
+実外部サービス（実 Google / 実 Gmail / 実ラジコ）との結合確認は、自宅サーバーへの実機デプロイ後に手動でブラウザ操作を伴って確認する。自動化スクリプトは作らない方針。
 
 ---
 
@@ -113,31 +114,16 @@
 
 ---
 
-## ST（システムテスト）
+## 実機での結合確認
 
-### 半自動スクリプト方式
+UT/IT で網羅できない部分（実 Google OAuth / 実 Gmail SMTP / 実ラジコの auth1・auth2 / 番組表取得 / タイムフリーDL）は、自宅サーバーへの実機デプロイ後に **手動** で動作確認する。
 
-リリース前または週次で実行する、実外部サービス接続のスモークテスト。
+確認内容:
+- ブラウザで Google ログイン → 番組表表示まで到達
+- バッチ手動実行 UI から F4（番組表取得）→ F2（DL）を実行 → ライブラリでファイル再生
+- バッチ完了通知メールが Gmail に届くこと
 
-#### 対象シナリオ
-
-| 種類 | 方式 | スクリプト |
-|------|------|---------|
-| Gmail SMTP 送信 | 自動 | `scripts/st/gmail-smoke.sh` — テストメール1通送信→受信を IMAP/Gmail API で検証 |
-| ラジコ auth1/auth2 | 自動 | `scripts/st/radiko-auth-check.sh` — 認証成功＋area_id 取得を確認 |
-| ラジコ番組表取得 | 自動 | `scripts/st/radiko-program-fetch.sh` — 1放送局・1日分のXML取得を確認 |
-| ラジコ短時間DL | 自動 | `scripts/st/radiko-download-sample.sh` — 短時間（5分）番組のDL→MP3化 |
-| Google OAuth ログイン | 手動 | チェックリスト（ブラウザでログイン画面 → Google → 戻り先で `/api/auth/me` 200） |
-| End-to-End シナリオ | 手動 | チェックリスト（登録→DL→再生→メール通知） |
-
-#### スクリプト実行環境
-- DevContainer 内で実行可能（curl, jq, ffmpeg 等は揃っている）
-- 環境変数 `.env.st` から認証情報を読み込み
-- 実 Gmail のテスト用アプリパスワードを使用（リポジトリには `.env.st.example` のみコミット）
-
-#### 実行頻度
-- リリース前: 全スクリプト実行
-- 週次（任意）: ラジコ系スクリプトのみ
+半自動スクリプト方式は当初設計していたが、個人利用 1 人運用ではブラウザでの動作確認が最も効率的なため不採用とした。
 
 ---
 
@@ -286,9 +272,8 @@ jobs:
       - run: npm run test:e2e
 ```
 
-### ST は CI 対象外
-- ST は手動（リリース前にローカル or 専用サーバで実行）
-- 必要に応じて GitHub Actions の `workflow_dispatch` で手動実行できるようにする
+### 実機確認は CI 対象外
+- 実 Google / 実 Gmail / 実ラジコとの結合確認は手動（実機デプロイ後にブラウザで操作）
 
 ---
 
@@ -312,12 +297,3 @@ frontend/
 └── e2e/                                  ← Browser IT (Playwright)
 ```
 
-### ST スクリプト
-```
-scripts/st/
-├── gmail-smoke.sh
-├── radiko-auth-check.sh
-├── radiko-program-fetch.sh
-├── radiko-download-sample.sh
-└── README.md                             ← 手動チェックリスト含む
-```

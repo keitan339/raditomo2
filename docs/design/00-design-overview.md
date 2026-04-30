@@ -10,7 +10,7 @@
 | 4 | [04-frontend-design.md](./04-frontend-design.md) | 画面構成、技術スタック、画面別仕様 |
 | 5 | [05-batch-file-notification.md](./05-batch-file-notification.md) | バッチ連携、ファイル保存、通知設計 |
 | 6 | [06-docker-security.md](./06-docker-security.md) | Docker構成、Nginx設定、JWT・HLS配信の認証 |
-| 7 | [07-test-strategy.md](./07-test-strategy.md) | テスト戦略（UT/IT/ST 3層、カバレッジ、CI） |
+| 7 | [07-test-strategy.md](./07-test-strategy.md) | テスト戦略（UT/IT 2層、カバレッジ、CI） |
 
 ## 設計の主要な決定事項（要件定義から引き継ぎ・本設計で確定）
 
@@ -37,6 +37,6 @@
 | F2 処理単位 | 1番組ずつ直列。チャンクのみ並列（並列度8） |
 | タイムフリー期限判定 | Java 側で「放送日（5:00区切り）+ 8日 5:00:00 JST」を厳密判定 |
 | エリア制限 | フリー会員のため、サーバー設置場所のラジコ `auth2` が返す area_id のみ聴取可能 |
-| テスト戦略 | UT（Mockito / Vitest+RTL+MSW）/ IT（Testcontainers + GreenMail + mock-oauth2-server + WireMock + Playwright）/ ST（半自動スクリプト） |
+| テスト戦略 | UT（Mockito / Vitest+RTL+MSW）/ IT（Testcontainers + GreenMail + mock-oauth2-server + WireMock + Playwright）。実外部サービス連携は実機デプロイ後に手動ブラウザ確認 |
 | カバレッジ目標 | UT 80%（JaCoCo / Vitest coverage）。CI で未達なら失敗 |
-| CI | GitHub Actions（UT/IT 自動、ST は workflow_dispatch） |
+| CI | GitHub Actions（UT/IT 自動、build-and-push で GHCR に publish） |

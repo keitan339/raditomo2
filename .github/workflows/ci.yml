@@ -96,16 +96,6 @@ jobs:
           name: playwright-report
           path: apps/frontend/playwright-report/
 
-  # ST はリリース前に手動実行（workflow_dispatch）。
-  # scripts/st/ 配下の半自動スクリプト実行は実外部サービス接続が必要なためここでは雛形のみ。
-  st:
-    name: System Test (manual)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "ST is run manually via workflow_dispatch (see scripts/st/)"
-
   # main への push でテスト全緑後、GHCR に backend / web イメージを push する。
   # 自宅サーバーは deployment/deploy.sh で `docker compose pull && up -d` するだけで更新できる。
   build-and-push:

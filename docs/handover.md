@@ -33,7 +33,7 @@
 | `docs/design/04-frontend-design.md` | 画面構成・MUI・レスポンシブ・HLSプレイヤー |
 | `docs/design/05-batch-file-notification.md` | スケジューラ（5:30）・F4→F2連鎖・ファイル保存・Gmail通知 |
 | `docs/design/06-docker-security.md` | Docker構成・Nginx・JWT・HLS配信認証 |
-| `docs/design/07-test-strategy.md` | UT/IT/ST 3層、ツール、カバレッジ80%、CI |
+| `docs/design/07-test-strategy.md` | UT/IT 2層、ツール、カバレッジ80%、CI |
 
 ### 運用ドキュメント
 | ファイル | 内容 |
@@ -128,9 +128,8 @@
 35. Nginx 設定（HTTPS、HLS配信、auth_request）
 36. HLS 署名付きパスの実装
 37. Playwright Browser IT（主要シナリオ）
-38. ST スクリプト（`scripts/st/*`）
-39. Let's Encrypt 証明書取得（HTTP-01）
-40. 本番デプロイ手順書
+38. Let's Encrypt 証明書取得（HTTP-01）
+39. 本番デプロイ手順書
 
 各フェーズで「UT を書く → 実装 → IT を書く → 通る」を繰り返す。
 
@@ -180,9 +179,9 @@
 | F4→F2 連鎖 | ApplicationEvent + AFTER_COMMIT | F4 部分失敗時もF2が動く |
 | バッチ排他制御 | `batch_executions` + SELECT FOR UPDATE | DBで一元管理、in-memory ロックは避ける |
 | ファイル削除と履歴 | 履歴は残す（`file_deleted_at` セット） | 削除済みを再DL対象にしない |
-| カバレッジ目標 | UT のみ 80% | IT/ST はシナリオで担保 |
+| カバレッジ目標 | UT のみ 80% | IT はシナリオで担保 |
 | ブラウザE2E | IT 層に配置 | 独自サービス（mock-oauth等）で完結させるため |
-| ST | 半自動スクリプト主体 | リリース前スモーク用途 |
+| 実機結合確認 | 実デプロイ後に手動ブラウザ操作 | 個人利用1人なので半自動スクリプトは不採用 |
 
 ---
 
