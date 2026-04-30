@@ -1,7 +1,9 @@
 package com.raditomo.radiko.download;
 
+import com.raditomo.radiko.RadikoProperties;
 import org.junit.jupiter.api.Test;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -61,5 +63,29 @@ class RadikoTimefreeDownloaderTest {
     @Test
     void extractChunkUrls_returnsEmptyForEmptyPlaylist() {
         assertThat(RadikoTimefreeDownloader.extractChunkUrls("#EXTM3U\n#EXT-X-VERSION:6\n", "https://x")).isEmpty();
+    }
+
+    @Test
+    void buildPlaylistUrl_includesAllRequiredParams() {
+        RadikoProperties props = new RadikoProperties(8, "https://radiko.jp", "key", 3, 10, 30, 3);
+        RadikoTimefreeDownloader d = new RadikoTimefreeDownloader(props, null, null);
+        OffsetDateTime ft = OffsetDateTime.parse("2026-04-28T22:00:00+09:00");
+        OffsetDateTime to = OffsetDateTime.parse("2026-04-28T22:05:00+09:00");
+        String url = d.buildPlaylistUrl(
+                "https://tf-f-rpaa-radiko.smartstream.ne.jp/tf/playlist.m3u8",
+                "TBS", ft, to, 300);
+        assertThat(url).startsWith(
+                "https://tf-f-rpaa-radiko.smartstream.ne.jp/tf/playlist.m3u8"
+                        + "?station_id=TBS"
+                        + "&start_at=20260428220000"
+                        + "&ft=20260428220000"
+                        + "&seek=20260428220000"
+                        + "&end_at=20260428220500"
+                        + "&to=20260428220500"
+                        + "&l=300"
+                        + "&lsid=");
+        assertThat(url).endsWith("&type=c");
+        // lsid は 32 桁の hex
+        assertThat(url).matches(".*&lsid=[0-9a-f]{32}&type=c$");
     }
 }

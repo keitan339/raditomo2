@@ -15,25 +15,35 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * タイムフリー音声のチャンク並列ダウンロード（2026/01 仕様変更後）。
  *
- * フロー:
- * 1. /v2/api/ts/playlist.m3u8 でマスタープレイリスト取得（認証ヘッダー付き）
- * 2. マスタープレイリストから smartstream.ne.jp 配信のメディアプレイリストURLを抽出
- * 3. メディアプレイリストから .aac セグメントURLを順序通り抽出
- * 4. 並列度 N（デフォルト8）の Virtual Thread で並列DL → 順序通り連結保存
+ * 旧仕様（〜2026/01/26）: radiko.jp/v2/api/ts/playlist.m3u8 → 廃止
  *
- * 設計判断: 番組単位は直列、チャンクのみ並列（レート制限・エラー処理の単純化のため）。
+ * 新仕様:
+ * 1. {@code https://radiko.jp/v3/station/stream/pc_html5/{stationId}.xml} を取得
+ *    → {@code <url timefree="1" areafree="0">} の {@code <playlist_create_url>} を抽出
+ * 2. プレイリスト URL（例: tf-f-rpaa-radiko.smartstream.ne.jp/tf/playlist.m3u8）に
+ *    station_id / start_at / ft / seek / end_at / to / l / lsid / type=c を付けて GET
+ *    → マスタープレイリストが返る
+ * 3. マスタープレイリストの URL を辿るとセグメント (.aac) リストの medialist が得られる
+ * 4. medialist 内の各セグメント URL を並列 DL → 順序通り連結保存
  *
- * 部分失敗時は最大 chunkRetry 回まで個別チャンクをリトライ。
+ * 1リクエストあたりの最大長は 300 秒。番組が 300 秒を超える場合は 300 秒単位に分割し、
+ * 各チャンク（プレイリスト分割）ごとに上記 1〜4 を実行して連結する。
+ *
+ * 認証ヘッダ: X-Radiko-AuthToken, X-Radiko-AreaId（auth2 で取得した areaId）。
  */
 @Service
 @RequiredArgsConstructor
@@ -42,6 +52,12 @@ public class RadikoTimefreeDownloader {
 
     private static final DateTimeFormatter RADIKO_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(java.time.ZoneId.of("Asia/Tokyo"));
+    /** 1 プレイリストリクエストあたりの最大秒数（rec_radiko_ts の仕様に準拠）。 */
+    private static final int MAX_CHUNK_SECONDS = 300;
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final Pattern AREAFREE_TIMEFREE_URL = Pattern.compile(
+            "<url\\s+[^>]*areafree=\"0\"[^>]*timefree=\"1\"[^>]*>\\s*<playlist_create_url>\\s*([^<]+?)\\s*</playlist_create_url>"
+                    + "|<url\\s+[^>]*timefree=\"1\"[^>]*areafree=\"0\"[^>]*>\\s*<playlist_create_url>\\s*([^<]+?)\\s*</playlist_create_url>");
 
     private final RadikoProperties props;
     private final RadikoAuthService authService;
@@ -49,23 +65,33 @@ public class RadikoTimefreeDownloader {
 
     /**
      * 指定範囲のタイムフリー音声を AAC として 1 ファイルに連結ダウンロード。
-     *
-     * @param stationId 放送局ID
-     * @param ft        放送開始（JST）
-     * @param to        放送終了（JST）
-     * @param outputAac 出力先（既存ファイルは上書き）
-     * @return チャンク統計
      */
     public DownloadStats download(String stationId, OffsetDateTime ft, OffsetDateTime to, Path outputAac) {
         RadikoAuthToken auth = authService.getToken();
-        String masterUrl = buildPlaylistUrl(stationId, ft, to);
-        String masterBody = httpGet(masterUrl, auth.authToken());
-        String mediaUrl = extractMediaPlaylistUrl(masterBody, masterUrl);
-        String mediaBody = httpGet(mediaUrl, auth.authToken());
-        List<String> chunkUrls = extractChunkUrls(mediaBody, mediaUrl);
+        String playlistCreateUrl = fetchPlaylistCreateUrl(stationId);
 
-        if (chunkUrls.isEmpty()) {
-            throw new RadikoDownloadException("No chunks found for stationId=" + stationId);
+        long totalSeconds = Duration.between(ft, to).toSeconds();
+        if (totalSeconds <= 0) {
+            throw new RadikoDownloadException("Invalid time range: ft=" + ft + " to=" + to);
+        }
+
+        // 300 秒チャンクに分割して順次セグメント URL を集める。
+        List<String> allSegmentUrls = new ArrayList<>();
+        OffsetDateTime cursor = ft;
+        while (cursor.isBefore(to)) {
+            OffsetDateTime chunkEnd = cursor.plusSeconds(MAX_CHUNK_SECONDS);
+            if (chunkEnd.isAfter(to)) chunkEnd = to;
+            int lSec = (int) Duration.between(cursor, chunkEnd).toSeconds();
+            String masterUrl = buildPlaylistUrl(playlistCreateUrl, stationId, cursor, chunkEnd, lSec);
+            String masterBody = httpGet(masterUrl, auth);
+            String mediaUrl = extractMediaPlaylistUrl(masterBody, masterUrl);
+            String mediaBody = httpGet(mediaUrl, auth);
+            allSegmentUrls.addAll(extractChunkUrls(mediaBody, mediaUrl));
+            cursor = chunkEnd;
+        }
+
+        if (allSegmentUrls.isEmpty()) {
+            throw new RadikoDownloadException("No segments found for stationId=" + stationId);
         }
 
         try {
@@ -74,7 +100,7 @@ public class RadikoTimefreeDownloader {
             throw new RadikoDownloadException("Cannot create output dir: " + outputAac.getParent(), e);
         }
 
-        byte[][] chunks = downloadChunks(chunkUrls, auth.authToken());
+        byte[][] chunks = downloadChunks(allSegmentUrls, auth);
         try (var out = Files.newOutputStream(outputAac)) {
             for (byte[] chunk : chunks) {
                 out.write(chunk);
@@ -84,17 +110,44 @@ public class RadikoTimefreeDownloader {
         }
         long totalBytes = 0;
         for (byte[] chunk : chunks) totalBytes += chunk.length;
-        log.info("Download completed: stationId={} chunks={} bytes={} file={}",
+        log.info("Download completed: stationId={} segments={} bytes={} file={}",
                 stationId, chunks.length, totalBytes, outputAac);
         return new DownloadStats(chunks.length, totalBytes);
     }
 
-    String buildPlaylistUrl(String stationId, OffsetDateTime ft, OffsetDateTime to) {
-        return props.baseUrl() + "/v2/api/ts/playlist.m3u8"
+    /** {@code GET /v3/station/stream/pc_html5/{stationId}.xml} から timefree/areafree=0 の URL を抽出。 */
+    String fetchPlaylistCreateUrl(String stationId) {
+        String url = props.baseUrl() + "/v3/station/stream/pc_html5/" + stationId + ".xml";
+        String body = simpleHttpGet(url);
+        Matcher m = AREAFREE_TIMEFREE_URL.matcher(body);
+        if (!m.find()) {
+            throw new RadikoDownloadException("Failed to find timefree playlist URL for " + stationId);
+        }
+        // 2 つの代替パターンのうち、マッチしたグループを使う。
+        return m.group(1) != null ? m.group(1).trim() : m.group(2).trim();
+    }
+
+    String buildPlaylistUrl(String playlistCreateUrl, String stationId,
+                            OffsetDateTime ft, OffsetDateTime to, int lSec) {
+        String ftStr = RADIKO_FORMAT.format(ft);
+        String toStr = RADIKO_FORMAT.format(to);
+        String lsid = HexFormat.of().formatHex(randomBytes(16));
+        return playlistCreateUrl
                 + "?station_id=" + stationId
-                + "&l=15"
-                + "&ft=" + RADIKO_FORMAT.format(ft)
-                + "&to=" + RADIKO_FORMAT.format(to);
+                + "&start_at=" + ftStr
+                + "&ft=" + ftStr
+                + "&seek=" + ftStr
+                + "&end_at=" + toStr
+                + "&to=" + toStr
+                + "&l=" + lSec
+                + "&lsid=" + lsid
+                + "&type=c";
+    }
+
+    private static byte[] randomBytes(int n) {
+        byte[] b = new byte[n];
+        RANDOM.nextBytes(b);
+        return b;
     }
 
     /** マスタープレイリストから最初のメディアプレイリスト URL を取り出す。 */
@@ -127,7 +180,7 @@ public class RadikoTimefreeDownloader {
         return URI.create(base).resolve(maybeRelative).toString();
     }
 
-    private byte[][] downloadChunks(List<String> urls, String authToken) {
+    private byte[][] downloadChunks(List<String> urls, RadikoAuthToken auth) {
         int concurrency = Math.max(1, props.downloadConcurrency());
         Semaphore semaphore = new Semaphore(concurrency);
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -136,7 +189,7 @@ public class RadikoTimefreeDownloader {
                 futures.add(pool.submit(() -> {
                     semaphore.acquire();
                     try {
-                        return downloadChunkWithRetry(url, authToken);
+                        return downloadChunkWithRetry(url, auth);
                     } finally {
                         semaphore.release();
                     }
@@ -157,12 +210,12 @@ public class RadikoTimefreeDownloader {
         }
     }
 
-    private byte[] downloadChunkWithRetry(String url, String authToken) {
+    private byte[] downloadChunkWithRetry(String url, RadikoAuthToken auth) {
         int maxAttempts = Math.max(1, props.chunkRetry());
         IOException last = null;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                return downloadChunkOnce(url, authToken);
+                return downloadChunkOnce(url, auth);
             } catch (IOException e) {
                 last = e;
                 log.warn("Chunk download attempt {}/{} failed: {} ({})",
@@ -175,10 +228,11 @@ public class RadikoTimefreeDownloader {
         throw new RadikoDownloadException("All retries exhausted for: " + url, last);
     }
 
-    private byte[] downloadChunkOnce(String url, String authToken) throws IOException, InterruptedException {
+    private byte[] downloadChunkOnce(String url, RadikoAuthToken auth) throws IOException, InterruptedException {
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .GET()
-                .header("X-Radiko-AuthToken", authToken)
+                .header("X-Radiko-AuthToken", auth.authToken())
+                .header("X-Radiko-AreaId", auth.areaId())
                 .timeout(Duration.ofSeconds(props.httpReadTimeoutSeconds()))
                 .build();
         HttpResponse<byte[]> resp = radikoHttpClient.send(req, HttpResponse.BodyHandlers.ofByteArray());
@@ -188,10 +242,31 @@ public class RadikoTimefreeDownloader {
         return resp.body();
     }
 
-    private String httpGet(String url, String authToken) {
+    /** 認証ヘッダ付き GET（プレイリストや medialist 取得用）。 */
+    private String httpGet(String url, RadikoAuthToken auth) {
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .GET()
-                .header("X-Radiko-AuthToken", authToken)
+                .header("X-Radiko-AuthToken", auth.authToken())
+                .header("X-Radiko-AreaId", auth.areaId())
+                .timeout(Duration.ofSeconds(props.httpReadTimeoutSeconds()))
+                .build();
+        try {
+            HttpResponse<String> resp = radikoHttpClient.send(
+                    req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (resp.statusCode() / 100 != 2) {
+                throw new RadikoDownloadException("HTTP " + resp.statusCode() + " for " + url);
+            }
+            return resp.body();
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            throw new RadikoDownloadException("Failed: " + url, e);
+        }
+    }
+
+    /** 認証ヘッダ不要の GET（station stream xml 取得用）。 */
+    private String simpleHttpGet(String url) {
+        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .GET()
                 .timeout(Duration.ofSeconds(props.httpReadTimeoutSeconds()))
                 .build();
         try {
