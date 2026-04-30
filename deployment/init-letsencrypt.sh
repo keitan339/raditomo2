@@ -50,12 +50,15 @@ echo "==> Nginx を起動"
 docker compose up -d nginx
 
 # certbot は live/<domain>/ が既に存在するとエラー終了するため、ここで削除する。
+# certbot が以前生成した cert ファイルは root 所有なのでホスト側 rm では消せない。
+# 同じ certbot コンテナ（root）を使って削除する。
 # nginx は起動時に cert を in-memory にロード済みなので、ファイルを消しても
 # reload するまで古い cert で稼働を続ける（証明書配信は停止しない）。
-echo "==> 既存の証明書ディレクトリを削除"
-rm -rf "$CERT_DIR/live/$DOMAIN" \
-       "$CERT_DIR/archive/$DOMAIN" \
-       "$CERT_DIR/renewal/$DOMAIN.conf"
+echo "==> 既存の証明書ディレクトリを削除（certbot コンテナ経由）"
+docker compose run --rm --entrypoint "" certbot \
+  rm -rf "/etc/letsencrypt/live/$DOMAIN" \
+         "/etc/letsencrypt/archive/$DOMAIN" \
+         "/etc/letsencrypt/renewal/$DOMAIN.conf"
 
 echo "==> certbot で本番証明書を取得"
 docker compose run --rm --entrypoint "" certbot \
