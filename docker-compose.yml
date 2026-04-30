@@ -10,6 +10,7 @@ services:
       - ./infra/nginx/certs:/etc/nginx/certs:ro
       - ./apps/frontend/dist:/usr/share/nginx/html:ro
       - ./data/recordings:/data/recordings:ro
+      - ./data/certbot/www:/var/www/certbot:ro
     depends_on:
       - app
     networks:
@@ -67,6 +68,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # 証明書の取得・更新を行う certbot コンテナ。常駐させ、12 時間ごとに renew を試みる。
+  # 初回取得は別コマンドで明示的に行う（README 参照）。
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - ./infra/nginx/certs:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
 
 networks:
   radiko-net:

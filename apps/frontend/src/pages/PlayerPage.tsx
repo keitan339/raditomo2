@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { recordingsApi } from '../api/recordings';
+import { getAccessToken } from '../store/authStore';
 import { formatRange } from '../lib/time';
 
 const SAVE_INTERVAL_MS = 5000;
@@ -42,7 +43,14 @@ export function PlayerPage() {
     const audio = audioRef.current;
     if (!audio || !recording?.hlsUrl) return;
     if (Hls.isSupported()) {
-      const hls = new Hls();
+      const hls = new Hls({
+        // /hls/* は Nginx の auth_request で JWT 検証されるため、
+        // playlist と segment いずれの XHR にも Authorization を付ける。
+        xhrSetup: (xhr) => {
+          const token = getAccessToken();
+          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        },
+      });
       hls.loadSource(recording.hlsUrl);
       hls.attachMedia(audio);
       hlsRef.current = hls;
@@ -51,6 +59,8 @@ export function PlayerPage() {
         hlsRef.current = null;
       };
     }
+    // Safari ネイティブ HLS。Authorization ヘッダを乗せられないため、
+    // 同一オリジン Cookie 認証が必要な環境では別途対応が必要。
     audio.src = recording.hlsUrl;
   }, [recording?.hlsUrl]);
 

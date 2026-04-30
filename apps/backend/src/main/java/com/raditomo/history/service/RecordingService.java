@@ -37,8 +37,8 @@ public class RecordingService {
     }
 
     /**
-     * Nginx の location ~ ^/hls/([^/]+)/(.+)$ にマッピングした URL を返す。
-     * フェーズ7で署名付きパスに置き換える予定。
+     * Nginx の location ~ ^/hls/(\d+)/(.+)$ にマッピングした URL を返す。
+     * 認証は Nginx の auth_request → /api/internal/auth-hls で行う。
      */
     public String hlsUrl(DownloadHistory h) {
         String title = Sanitizer.forFileName(h.getProgramTitle());
