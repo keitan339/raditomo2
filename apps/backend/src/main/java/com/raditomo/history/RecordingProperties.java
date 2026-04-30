@@ -11,20 +11,23 @@ import java.util.List;
  * <pre>
  * raditomo:
  *   recording:
- *     title-group-patterns:
- *       - "[\\s　]*[0-9０-９]{1,2}時台.*$"
- *       - "[\\s　]+Part\\s*[0-9０-９]+\\s*$"
- *       - "[\\s　]*[\\(（][0-9０-９]+[\\)）]\\s*$"
- *       - "[\\s　]*第[0-9０-９]+回\\s*$"
+ *     title-groups:
+ *       - pattern: "らじらー[！!][　 ]サンデー"
+ *         group-key: "らじらー！　サンデー"
  * </pre>
  *
- * @param titleGroupPatterns 番組タイトルからグループキーを導出する際に
- *                           末尾から取り除くパターンの正規表現リスト。
- *                           各エントリは末尾アンカー ($) を含めること。順に適用される。
+ * 番組タイトルが {@code pattern}（正規表現）にマッチすればライブラリ上は {@code groupKey} に集約する。
+ * マッチしない番組はタイトルのまま（個別グループ）として扱う。
  */
 @ConfigurationProperties(prefix = "raditomo.recording")
-public record RecordingProperties(List<String> titleGroupPatterns) {
+public record RecordingProperties(List<TitleGroup> titleGroups) {
     public RecordingProperties {
-        titleGroupPatterns = titleGroupPatterns == null ? List.of() : List.copyOf(titleGroupPatterns);
+        titleGroups = titleGroups == null ? List.of() : List.copyOf(titleGroups);
     }
+
+    /**
+     * @param pattern  タイトルにマッチさせる正規表現（部分一致 OK）
+     * @param groupKey マッチしたタイトルをまとめる canonical なグループ名
+     */
+    public record TitleGroup(String pattern, String groupKey) {}
 }

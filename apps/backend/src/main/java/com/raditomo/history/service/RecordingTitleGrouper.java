@@ -1,6 +1,7 @@
 package com.raditomo.history.service;
 
 import com.raditomo.history.RecordingProperties;
+import com.raditomo.history.RecordingProperties.TitleGroup;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -10,47 +11,48 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * 録音ライブラリでのタイトル「グループ化キー」を導出する。
+ * 録音ライブラリのタイトル「グループキー」を導出する。
  *
- * 設定 {@code raditomo.recording.title-group-patterns} に列挙された正規表現を、
- * タイトル末尾から順に {@code replaceFirst} で削除した結果（前後空白 trim）を返す。
+ * 設定 {@code raditomo.recording.title-groups} に列挙された
+ * {@code (pattern, groupKey)} を順に適用し、最初に {@code pattern}
+ * （正規表現・部分一致）がタイトルにマッチした {@code groupKey} を返す。
+ * どれにもマッチしなければタイトルそのもの（trim 済み）を返す。
  *
- * 例（デフォルトパターン適用時）:
- * - 「らじらー！　サンデー　８時台 山田・佐藤」  → 「らじらー！　サンデー」
- * - 「パンサー向井の#ふらっと (1)」              → 「パンサー向井の#ふらっと」
- * - 「○○ Part 2」                               → 「○○」
- * - 「○○ 第3回」                                → 「○○」
- * - 「アルファ」                                  → 「アルファ」
- *
- * 全角数字「１０時台」「（２）」も含めるかどうかはパターン側の責務（デフォルトでは
- * {@code [0-9０-９]} で半角・全角どちらにもマッチさせている）。
+ * 例（設定 {@code "らじらー[！!][　 ]サンデー" → "らじらー！　サンデー"} の場合）:
+ * - 「らじらー！　サンデー　８時台 ...」  → 「らじらー！　サンデー」
+ * - 「らじらー!　サンデー　９時台 ...」    → 「らじらー！　サンデー」（半角！でも match）
+ * - 「らじらー！ サンデー」                → 「らじらー！　サンデー」（半角空白でも match）
+ * - 「アニメイトTV」                       → 「アニメイトTV」（マッチなし）
  */
 @Component
 @Slf4j
 public class RecordingTitleGrouper {
 
-    private final List<Pattern> patterns;
+    private final List<CompiledGroup> groups;
 
     public RecordingTitleGrouper(RecordingProperties props) {
-        List<Pattern> compiled = new ArrayList<>();
-        for (String regex : props.titleGroupPatterns()) {
+        List<CompiledGroup> compiled = new ArrayList<>();
+        for (TitleGroup g : props.titleGroups()) {
             try {
-                compiled.add(Pattern.compile(regex));
+                compiled.add(new CompiledGroup(Pattern.compile(g.pattern()), g.groupKey()));
             } catch (PatternSyntaxException e) {
-                log.error("Invalid title-group-pattern: '{}' - skipping ({})", regex, e.getMessage());
+                log.error("Invalid title-group pattern: '{}' - skipping ({})",
+                        g.pattern(), e.getMessage());
             }
         }
-        this.patterns = List.copyOf(compiled);
-        log.info("RecordingTitleGrouper loaded {} pattern(s)", patterns.size());
+        this.groups = List.copyOf(compiled);
+        log.info("RecordingTitleGrouper loaded {} group rule(s)", groups.size());
     }
 
     public String groupKey(String title) {
         if (title == null) return "";
-        String t = title;
-        for (Pattern p : patterns) {
-            t = p.matcher(t).replaceFirst("");
+        for (CompiledGroup g : groups) {
+            if (g.pattern.matcher(title).find()) {
+                return g.groupKey;
+            }
         }
-        // 末尾の trim（半角/全角空白）
-        return t.replaceAll("[\\s　]+$", "").trim();
+        return title.trim();
     }
+
+    private record CompiledGroup(Pattern pattern, String groupKey) {}
 }

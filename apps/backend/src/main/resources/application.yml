@@ -46,19 +46,14 @@ logging:
 raditomo:
   recordings-base-path: ${RECORDINGS_BASE_PATH:./data/recordings}
   xml-base-path: ${XML_BASE_PATH:./data/xml}
-  # 録音ライブラリのグループ化キーを導出する正規表現。各パターンは末尾から replaceFirst で削除される。
-  # 末尾アンカー ($) を含めること。半角・全角数字 ([0-9０-９]) どちらも対象にしておくと radiko の実データに強い。
-  # 必要に応じて追加・編集することで、コードを変更せずグルーピング規則を調整できる。
+  # 録音ライブラリのグループ化ルール。
+  # タイトルが pattern（正規表現・部分一致）にマッチすると group-key にまとめる。
+  # 必要なグループだけここに列挙し、それ以外の番組はタイトルごとに別グループのまま。
   recording:
-    title-group-patterns:
-      # 末尾の「○時台 出演者...」（例: らじらー！　サンデー　８時台 五百城茉央）
-      - "[\\s　]*[0-9０-９]{1,2}時台.*$"
-      # 末尾の「Part N」
-      - "[\\s　]+Part\\s*[0-9０-９]+\\s*$"
-      # 末尾の「(N)」「（N）」
-      - "[\\s　]*[\\(（][0-9０-９]+[\\)）]\\s*$"
-      # 末尾の「第N回」
-      - "[\\s　]*第[0-9０-９]+回\\s*$"
+    title-groups:
+      # 「らじらー！　サンデー　○時台 ...」など、！と　は半角・全角どちらも許容
+      - pattern: "らじらー[！!][　 ]サンデー"
+        group-key: "らじらー！　サンデー"
   notification:
     enabled: ${NOTIFICATION_ENABLED:true}
     from: ${NOTIFICATION_FROM:${SMTP_USERNAME:noreply@example.com}}
