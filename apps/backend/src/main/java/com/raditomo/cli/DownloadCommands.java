@@ -46,8 +46,11 @@ public class DownloadCommands {
         public void run() {
             String options = buildOptionsJson(date, force);
             log.info("CLI: starting download (F4_F2) options={}", options);
-            f4BatchRunner.runF4(BatchType.F4_F2, TriggeredBy.CLI, null, options);
-            System.out.println("F4_F2 を起動しました（F2 は AFTER_COMMIT で連鎖実行されます）");
+            // CLI モードは Picocli runnable が return すると JVM が即 exit するため、
+            // event + @Async で連鎖させると F2 が中断される。同期版を使う。
+            var exec = f4BatchRunner.runF4F2Synchronously(TriggeredBy.CLI, null, options);
+            System.out.printf("F4_F2 完了: id=%d status=%s summary=%s%n",
+                    exec.getId(), exec.getStatus(), exec.getSummary());
         }
     }
 

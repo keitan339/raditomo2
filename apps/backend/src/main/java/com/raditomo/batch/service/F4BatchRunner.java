@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -46,6 +45,7 @@ public class F4BatchRunner {
     private final ProgramFetchService programFetchService;
     private final UserSettingsRepository userSettingsRepository;
     private final BatchExecutionService batchExecutionService;
+    private final F2BatchRunner f2BatchRunner;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -74,51 +74,76 @@ public class F4BatchRunner {
     public BatchExecution runOnExisting(BatchExecution exec, BatchType batchType,
                                         TriggeredBy triggeredBy, String optionsJson) {
         try {
-            int totalAreas = 0;
-            int totalDays = 0;
-            int totalPrograms = 0;
-            int failedCombinations = 0;
-
-            List<String> areaIds = resolveAreaIds();
-            List<LocalDate> dates = dateRange();
-
-            for (String areaId : areaIds) {
-                totalAreas++;
-                for (LocalDate date : dates) {
-                    totalDays++;
-                    try {
-                        ProgramFetchService.FetchAndPersistResult r =
-                                programFetchService.fetchAndPersist(date, areaId);
-                        totalPrograms += r.programsUpserted();
-                    } catch (RuntimeException e) {
-                        failedCombinations++;
-                        log.warn("F4 partial failure: date={} area={} cause={}", date, areaId, e.toString());
-                    }
-                }
-            }
-
-            String summary = String.format("F4 areas=%d dates=%d programs=%d failedCombos=%d",
-                    totalAreas, totalDays, totalPrograms, failedCombinations);
+            F4PhaseResult result = runF4Phase();
             boolean chainToF2 = batchType == BatchType.F4_F2;
 
             if (chainToF2) {
-                // F4_F2 のときは completion を F2 リスナーに委ねる。F4 結果は summary に積んでおく。
-                exec.setSummary(summary);
+                // F4_F2 のときは completion を F2 リスナーに委ねる。F4 結果は event に積んで渡す。
                 eventPublisher.publishEvent(new ProgramFetchCompletedEvent(
-                        exec.getId(), triggeredBy, true, optionsJson));
+                        exec.getId(), triggeredBy, true, optionsJson, result.summary()));
                 return exec;
             }
 
-            BatchStatus finalStatus = failedCombinations == 0 ? BatchStatus.SUCCESS : BatchStatus.PARTIAL_FAILURE;
-            BatchExecution completed = batchExecutionService.complete(exec.getId(), finalStatus, summary);
+            BatchStatus finalStatus = result.failedCombinations() == 0
+                    ? BatchStatus.SUCCESS : BatchStatus.PARTIAL_FAILURE;
+            BatchExecution completed = batchExecutionService.complete(exec.getId(), finalStatus, result.summary());
             eventPublisher.publishEvent(new ProgramFetchCompletedEvent(
-                    completed.getId(), triggeredBy, false, optionsJson));
+                    completed.getId(), triggeredBy, false, optionsJson, result.summary()));
             return completed;
         } catch (RuntimeException e) {
             log.error("F4 execution failed: id={}", exec.getId(), e);
             batchExecutionService.complete(exec.getId(), BatchStatus.FAILED, e.toString());
             throw e;
         }
+    }
+
+    /**
+     * F4 → F2 を同一スレッドで同期実行する。CLI ({@code raditomo download}) 用。
+     *
+     * 通常の Web/スケジューラ経路は F4 完了時に event を publish して F2 を @Async で連鎖させるが、
+     * CLI モードは Picocli runnable が return するとすぐ JVM が exit するため、
+     * @Async スレッドが処理途中で中断されてしまう。CLI では event を経由せず同期で F2 まで走らせる。
+     */
+    public BatchExecution runF4F2Synchronously(TriggeredBy triggeredBy, Long triggeredUserId, String optionsJson) {
+        BatchExecution exec = batchExecutionService.start(
+                BatchType.F4_F2, triggeredBy, triggeredUserId, optionsJson);
+        try {
+            F4PhaseResult result = runF4Phase();
+            return f2BatchRunner.runForChainAndComplete(exec.getId(), optionsJson, result.summary());
+        } catch (RuntimeException e) {
+            log.error("F4_F2 sync execution failed: id={}", exec.getId(), e);
+            batchExecutionService.complete(exec.getId(), BatchStatus.FAILED, e.toString());
+            throw e;
+        }
+    }
+
+    private F4PhaseResult runF4Phase() {
+        int totalAreas = 0;
+        int totalDays = 0;
+        int totalPrograms = 0;
+        int failedCombinations = 0;
+
+        List<String> areaIds = resolveAreaIds();
+        List<LocalDate> dates = dateRange();
+
+        for (String areaId : areaIds) {
+            totalAreas++;
+            for (LocalDate date : dates) {
+                totalDays++;
+                try {
+                    ProgramFetchService.FetchAndPersistResult r =
+                            programFetchService.fetchAndPersist(date, areaId);
+                    totalPrograms += r.programsUpserted();
+                } catch (RuntimeException e) {
+                    failedCombinations++;
+                    log.warn("F4 partial failure: date={} area={} cause={}", date, areaId, e.toString());
+                }
+            }
+        }
+
+        String summary = String.format("F4 areas=%d dates=%d programs=%d failedCombos=%d",
+                totalAreas, totalDays, totalPrograms, failedCombinations);
+        return new F4PhaseResult(totalAreas, totalDays, totalPrograms, failedCombinations, summary);
     }
 
     private List<String> resolveAreaIds() {
@@ -146,4 +171,6 @@ public class F4BatchRunner {
         }
         return dates;
     }
+
+    private record F4PhaseResult(int areas, int days, int programs, int failedCombinations, String summary) {}
 }

@@ -67,6 +67,24 @@ public class F2BatchRunner {
         return summary;
     }
 
+    /**
+     * F4_F2 連鎖の F2 フェーズ + 完了書き込みをまとめて行う。
+     *
+     * 非同期リスナー経路（{@link F2ChainListener}）と CLI 同期経路の両方から呼ばれる。
+     * f4Summary は F4 フェーズの結果文字列。combined summary として
+     * "{f4Summary} | F2 success=.. failed=.. expired=.." の形で書き込む。
+     */
+    public BatchExecution runForChainAndComplete(Long batchExecutionId, String optionsJson, String f4Summary) {
+        TimefreeDownloadService.DownloadSummary summary = runForChain(optionsJson);
+        BatchStatus finalStatus = summary.failed() == 0 ? BatchStatus.SUCCESS : BatchStatus.PARTIAL_FAILURE;
+        String f2Summary = String.format("F2 success=%d failed=%d expired=%d",
+                summary.success(), summary.failed(), summary.expired());
+        String combined = (f4Summary == null || f4Summary.isBlank())
+                ? f2Summary
+                : f4Summary + " | " + f2Summary;
+        return batchExecutionService.complete(batchExecutionId, finalStatus, combined);
+    }
+
     private BatchExecution runInside(BatchExecution exec, String optionsJson) {
         try {
             Filter f = parseOptions(optionsJson);

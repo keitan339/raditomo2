@@ -14,6 +14,7 @@ public record ProgramFetchCompletedEvent(
         Long batchExecutionId,
         TriggeredBy triggeredBy,
         boolean chainToF2,
-        String optionsJson
+        String optionsJson,
+        String f4Summary
 ) {
 }
