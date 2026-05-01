@@ -3,6 +3,7 @@ package com.raditomo.notification.service;
 import com.raditomo.history.entity.DownloadHistory;
 import com.raditomo.history.entity.DownloadStatus;
 import com.raditomo.history.repository.UnnotifiedHistoryRepository;
+import com.raditomo.common.util.LogMask;
 import com.raditomo.notification.NotificationProperties;
 import com.raditomo.notification.template.F2FailureTemplate;
 import com.raditomo.user.entity.User;
@@ -79,7 +80,7 @@ public class NotificationService {
                 totalMarked += marked;
                 sentMails++;
             } catch (RuntimeException e) {
-                log.error("Failed to send notification to {}: {}", user.getEmail(), e.toString(), e);
+                log.error("Failed to send notification to {}: {}", LogMask.email(user.getEmail()), e.toString(), e);
                 // notified_at は更新しない → 次回バッチで再送
             }
         }
