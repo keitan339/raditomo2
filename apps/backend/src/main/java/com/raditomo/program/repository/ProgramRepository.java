@@ -36,15 +36,22 @@ public interface ProgramRepository extends JpaRepository<Program, Long> {
 
     /**
      * タイトル / 出演者の部分一致検索。
+     *
+     * タイムフリー期限切れ（broadcast_date が {@code oldestBroadcastDate} 未満）の番組は除外する。
+     * 呼び出し側は {@code JstTimes.broadcastDate(now).minusDays(7)} を渡す前提。
      */
     @Query("""
             SELECT p FROM Program p
             JOIN com.raditomo.station.entity.Station s ON s.id = p.stationId
             WHERE s.areaId = :areaId
+              AND p.broadcastDate >= :oldestBroadcastDate
               AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))
                 OR LOWER(COALESCE(p.performers, '')) LIKE LOWER(CONCAT('%', :q, '%')))
             ORDER BY p.broadcastStartAt ASC
             """)
     List<Program> searchByAreaAndKeyword(
-            @Param("areaId") String areaId, @Param("q") String q, Pageable pageable);
+            @Param("areaId") String areaId,
+            @Param("q") String q,
+            @Param("oldestBroadcastDate") LocalDate oldestBroadcastDate,
+            Pageable pageable);
 }

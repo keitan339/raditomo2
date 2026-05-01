@@ -78,11 +78,13 @@ public class ProgramController {
         require(userId);
         if (q.isBlank()) return List.of();
         var pageable = PageRequest.of(page, size);
-        List<Program> hits = programRepository.searchByAreaAndKeyword(areaId, q, pageable);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        // タイムフリー期限切れの番組は検索結果に含めない（broadcast_date < today-7 はもう DL 不可）
+        LocalDate oldestEligible = JstTimes.broadcastDate(now).minusDays(7);
+        List<Program> hits = programRepository.searchByAreaAndKeyword(areaId, q, oldestEligible, pageable);
         Map<Long, RegistrationRef> refs = matchRegistrations(userId, hits);
         Map<String, String> stationNames = stationRepository.findByAreaIdOrderBySortOrderAsc(areaId).stream()
                 .collect(java.util.stream.Collectors.toMap(Station::getId, Station::getName, (a, b) -> a));
-        OffsetDateTime now = OffsetDateTime.now(clock);
         return hits.stream()
                 .map(p -> ProgramDtos.toItem(p,
                         stationNames.getOrDefault(p.getStationId(), p.getStationId()),
