@@ -224,4 +224,154 @@ class DownloadCandidateMatcherTest {
                 OffsetDateTime.parse("2026-04-26T09:00:00+09:00"));
         assertThat(result).isEmpty();
     }
+
+    /**
+     * WEEKLY: 登録時の broadcastDate と異なる週の同曜日も、タイムフリー期間内に
+     * あれば候補化される（実運用での週次反復）。
+     */
+    @Test
+    void weekly_iteratesAcrossWeeks_returnsAllUndownloadedAirings() {
+        // 登録: FMT 木曜 13:00 「山崎怜奈」, broadcastDate=4/23 (Thu)
+        OffsetDateTime regFt = OffsetDateTime.parse("2026-04-23T13:00:00+09:00");
+        OffsetDateTime regTo = OffsetDateTime.parse("2026-04-23T14:55:00+09:00");
+        DownloadRegistration r = weeklyReg(20L, "FMT", regFt, regTo, "山崎怜奈", (short) 4); // Thu
+
+        // now = 2026-05-01 10:12 JST → broadcastDate=5/1 (Fri)。past 7 = 4/24..5/1
+        // 木曜は 4/30 のみ（4/23 は範囲外）
+        OffsetDateTime now = OffsetDateTime.parse("2026-05-01T10:12:00+09:00");
+
+        OffsetDateTime apr30Ft = OffsetDateTime.parse("2026-04-30T13:00:00+09:00");
+        OffsetDateTime apr30To = OffsetDateTime.parse("2026-04-30T14:55:00+09:00");
+        Program apr30 = program("FMT", apr30Ft, apr30To, LocalDate.of(2026, 4, 30), "山崎怜奈", null);
+        when(programRepository.findByStationIdAndBroadcastStartAt("FMT", apr30Ft))
+                .thenReturn(Optional.of(apr30));
+
+        List<DownloadCandidate> result = matcher.matchAll(List.of(r), null, false, now);
+
+        assertThat(result).singleElement().satisfies(c -> {
+            assertThat(c.matchStep()).isEqualTo("weekly-1");
+            assertThat(c.broadcastStartAt()).isEqualTo(apr30Ft);
+        });
+    }
+
+    /**
+     * WEEKLY: 登録時の broadcastDate も範囲内なら、その週の airing も候補に入る。
+     * （ただし履歴 SUCCESS があればスキップされる経路を別テストで担保）
+     */
+    @Test
+    void weekly_includesOriginalDateAiringWhenInRange() {
+        // 登録: TBS 金曜 11:30, broadcastDate=4/24 (Fri)
+        OffsetDateTime regFt = OffsetDateTime.parse("2026-04-24T11:30:00+09:00");
+        OffsetDateTime regTo = OffsetDateTime.parse("2026-04-24T11:55:00+09:00");
+        DownloadRegistration r = weeklyReg(20L, "TBS", regFt, regTo, "ほっとひといき", (short) 5); // Fri
+
+        // now = 2026-04-30 10:00 JST → broadcastDate=4/30。past 7 = 4/23..4/30
+        // 金曜は 4/24 のみ
+        OffsetDateTime now = OffsetDateTime.parse("2026-04-30T10:00:00+09:00");
+
+        Program apr24 = program("TBS", regFt, regTo, LocalDate.of(2026, 4, 24), "ほっとひといき", null);
+        when(programRepository.findByStationIdAndBroadcastStartAt("TBS", regFt))
+                .thenReturn(Optional.of(apr24));
+
+        List<DownloadCandidate> result = matcher.matchAll(List.of(r), null, false, now);
+
+        assertThat(result).singleElement().satisfies(c -> {
+            assertThat(c.matchStep()).isEqualTo("weekly-1");
+            assertThat(c.broadcastStartAt()).isEqualTo(regFt);
+        });
+    }
+
+    /**
+     * WEEKLY: 深夜放送（5:00区切りで前日扱い）の時間帯パターンが翌週も維持される。
+     * 登録 broadcast_start_at=4/30 01:00 (broadcastDate=4/29 Wed) →
+     * 次週 broadcastDate=5/6 (Wed) の airing は 5/7 01:00。
+     */
+    @Test
+    void weekly_lateNightTimePattern_preservedAcrossWeeks() {
+        // 登録: LFR 水曜深夜 01:00, broadcastDate=4/29 (Wed)
+        OffsetDateTime regFt = OffsetDateTime.parse("2026-04-30T01:00:00+09:00");
+        OffsetDateTime regTo = OffsetDateTime.parse("2026-04-30T03:00:00+09:00");
+        DownloadRegistration r = weeklyReg(20L, "LFR", regFt, regTo, "オールナイトニッポン", (short) 3); // Wed
+
+        // now = 2026-05-07 10:00 JST → broadcastDate=5/7。past 7 = 4/30..5/7
+        // 水曜は 5/6 のみ（4/29 は範囲外）
+        OffsetDateTime now = OffsetDateTime.parse("2026-05-07T10:00:00+09:00");
+
+        // 次週 broadcastDate=5/6 → 翌カレンダー日 5/7 01:00
+        OffsetDateTime nextFt = OffsetDateTime.parse("2026-05-07T01:00:00+09:00");
+        OffsetDateTime nextTo = OffsetDateTime.parse("2026-05-07T03:00:00+09:00");
+        Program nextProg = program("LFR", nextFt, nextTo, LocalDate.of(2026, 5, 6), "オールナイトニッポン", null);
+        when(programRepository.findByStationIdAndBroadcastStartAt("LFR", nextFt))
+                .thenReturn(Optional.of(nextProg));
+
+        List<DownloadCandidate> result = matcher.matchAll(List.of(r), null, false, now);
+
+        assertThat(result).singleElement().satisfies(c -> {
+            assertThat(c.matchStep()).isEqualTo("weekly-1");
+            assertThat(c.broadcastStartAt()).isEqualTo(nextFt);
+        });
+    }
+
+    /**
+     * WEEKLY: タイムフリー期間外（8 日以上前）の airing は候補にならない。
+     */
+    @Test
+    void weekly_skipsAiringsOlderThanTimefreeWindow() {
+        // 登録: 元 broadcastDate=4/23 (Thu), 次回 4/30 (Thu)
+        OffsetDateTime regFt = OffsetDateTime.parse("2026-04-23T13:00:00+09:00");
+        OffsetDateTime regTo = OffsetDateTime.parse("2026-04-23T14:55:00+09:00");
+        DownloadRegistration r = weeklyReg(20L, "FMT", regFt, regTo, "山崎怜奈", (short) 4);
+
+        // now = 2026-05-08 10:00 JST → broadcastDate=5/8。past 7 = 5/1..5/8
+        // 木曜は 5/7 のみ（4/30 はちょうど範囲外）
+        OffsetDateTime now = OffsetDateTime.parse("2026-05-08T10:00:00+09:00");
+
+        OffsetDateTime may7Ft = OffsetDateTime.parse("2026-05-07T13:00:00+09:00");
+        OffsetDateTime may7To = OffsetDateTime.parse("2026-05-07T14:55:00+09:00");
+        Program may7 = program("FMT", may7Ft, may7To, LocalDate.of(2026, 5, 7), "山崎怜奈", null);
+        when(programRepository.findByStationIdAndBroadcastStartAt("FMT", may7Ft))
+                .thenReturn(Optional.of(may7));
+
+        List<DownloadCandidate> result = matcher.matchAll(List.of(r), null, false, now);
+
+        // 4/30 は出ない（番組未モックでも、そもそも範囲外なので呼ばれない）
+        assertThat(result).extracting(DownloadCandidate::broadcastStartAt)
+                .containsExactly(may7Ft);
+    }
+
+    /**
+     * WEEKLY: 履歴 SUCCESS がある週はスキップ、無い週は候補化（複数週共存パターン）。
+     */
+    @Test
+    void weekly_skipsWeeksWithSuccessHistory_keepsOthers() {
+        OffsetDateTime regFt = OffsetDateTime.parse("2026-04-23T13:00:00+09:00");
+        OffsetDateTime regTo = OffsetDateTime.parse("2026-04-23T14:55:00+09:00");
+        DownloadRegistration r = weeklyReg(20L, "FMT", regFt, regTo, "山崎怜奈", (short) 4);
+
+        // now = 2026-05-07 18:00 JST → broadcastDate=5/7。past 7 = 4/30..5/7
+        // 木曜は 4/30, 5/7。両方とも放送終了済み。
+        OffsetDateTime now = OffsetDateTime.parse("2026-05-07T18:00:00+09:00");
+
+        OffsetDateTime apr30Ft = OffsetDateTime.parse("2026-04-30T13:00:00+09:00");
+        OffsetDateTime apr30To = OffsetDateTime.parse("2026-04-30T14:55:00+09:00");
+        Program apr30 = program("FMT", apr30Ft, apr30To, LocalDate.of(2026, 4, 30), "山崎怜奈", null);
+        when(programRepository.findByStationIdAndBroadcastStartAt("FMT", apr30Ft))
+                .thenReturn(Optional.of(apr30));
+
+        OffsetDateTime may7Ft = OffsetDateTime.parse("2026-05-07T13:00:00+09:00");
+        OffsetDateTime may7To = OffsetDateTime.parse("2026-05-07T14:55:00+09:00");
+        Program may7 = program("FMT", may7Ft, may7To, LocalDate.of(2026, 5, 7), "山崎怜奈", null);
+        when(programRepository.findByStationIdAndBroadcastStartAt("FMT", may7Ft))
+                .thenReturn(Optional.of(may7));
+
+        // 4/30 だけ既にダウンロード済み
+        when(historyRepository.findFirstByUserIdAndStationIdAndBroadcastStartAtAndStatus(
+                eq(1L), eq("FMT"), eq(apr30Ft), eq(DownloadStatus.SUCCESS)))
+                .thenReturn(Optional.of(DownloadHistory.builder().id(99L).build()));
+
+        List<DownloadCandidate> result = matcher.matchAll(List.of(r), null, false, now);
+
+        assertThat(result).extracting(DownloadCandidate::broadcastStartAt)
+                .containsExactly(may7Ft);
+    }
 }
