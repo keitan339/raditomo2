@@ -29,7 +29,8 @@ class Mp3EncoderTest {
     @Test
     void buildFfmpegCommand_includesBitrateAndMetadata() {
         Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata(
-                "朝の番組", "出演者A", "TBSラジオ", LocalDate.of(2026, 4, 24), 3_600_000);
+                "朝の番組_20260424-0500", "朝の番組", "出演者A", "TBSラジオ",
+                LocalDate.of(2026, 4, 24), 3_600_000);
         List<String> cmd = encoder.buildFfmpegCommand(
                 Path.of("/tmp/in.aac"), Path.of("/tmp/out.mp3"), meta);
 
@@ -37,9 +38,11 @@ class Mp3EncoderTest {
         assertThat(cmd).containsSequence("-c:a", "libmp3lame");
         assertThat(cmd).containsSequence("-b:a", "128k");
         assertThat(cmd).containsSequence("-id3v2_version", "3");
-        assertThat(cmd).containsSequence("-metadata", "title=朝の番組");
+        assertThat(cmd).containsSequence("-metadata", "title=朝の番組_20260424-0500");
         assertThat(cmd).containsSequence("-metadata", "artist=出演者A");
-        assertThat(cmd).containsSequence("-metadata", "album=TBSラジオ");
+        // Album は素の番組名（_YYYYMMDD-HHMM を含まない）
+        assertThat(cmd).containsSequence("-metadata", "album=朝の番組");
+        // Album Artist は放送局の和名
         assertThat(cmd).containsSequence("-metadata", "album_artist=TBSラジオ");
         assertThat(cmd).containsSequence("-metadata", "date=20260424");
         assertThat(cmd).containsSequence("-metadata", "year=2026");
@@ -49,13 +52,14 @@ class Mp3EncoderTest {
     @Test
     void buildFfmpegCommand_skipsEmptyMetadata() {
         Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata(
-                "T", null, "", null, 0);
+                "T", null, null, "", null, 0);
         List<String> cmd = encoder.buildFfmpegCommand(
                 Path.of("in.aac"), Path.of("out.mp3"), meta);
 
         assertThat(cmd).contains("-metadata", "title=T");
         assertThat(cmd).noneMatch(s -> s.startsWith("artist="));
         assertThat(cmd).noneMatch(s -> s.startsWith("album="));
+        assertThat(cmd).noneMatch(s -> s.startsWith("album_artist="));
         assertThat(cmd).noneMatch(s -> s.startsWith("date="));
         assertThat(cmd).noneMatch(s -> s.startsWith("year="));
     }
@@ -63,7 +67,7 @@ class Mp3EncoderTest {
     @Test
     void encode_throwsWhenInputMissing(@TempDir Path tmp) {
         Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata(
-                "t", null, null, null, 0);
+                "t", null, null, null, null, 0);
         assertThatThrownBy(() -> encoder.encode(tmp.resolve("missing.aac"), tmp.resolve("out.mp3"), meta))
                 .isInstanceOf(Mp3Encoder.Mp3EncodeException.class)
                 .hasMessageContaining("AAC input not found");
@@ -77,7 +81,7 @@ class Mp3EncoderTest {
         Files.writeString(mp3, "stale"); // ffmpeg がここに上書きする想定。失敗時に削除されることを検証
         when(ffmpeg.run(any())).thenReturn(1);
 
-        Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata("t", null, null, null, 0);
+        Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata("t", null, null, null, null, 0);
         assertThatThrownBy(() -> encoder.encode(aac, mp3, meta))
                 .isInstanceOf(Mp3Encoder.Mp3EncodeException.class);
         assertThat(Files.exists(mp3)).isFalse();
@@ -94,7 +98,7 @@ class Mp3EncoderTest {
             return 0;
         });
 
-        Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata("t", null, null, null, 0);
+        Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata("t", null, null, null, null, 0);
         encoder.encode(aac, mp3, meta);
 
         ArgumentCaptor<List<String>> captor = ArgumentCaptor.captor();

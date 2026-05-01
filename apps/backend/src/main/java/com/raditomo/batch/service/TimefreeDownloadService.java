@@ -119,6 +119,7 @@ public class TimefreeDownloadService {
                 String titleWithDateTime = c.title() + "_" + PATH_DATETIME.format(c.broadcastStartAt().toInstant());
                 Mp3Encoder.Mp3Metadata meta = new Mp3Encoder.Mp3Metadata(
                         titleWithDateTime,
+                        c.title(),
                         c.performers(),
                         stationName,
                         c.broadcastStartAt().atZoneSameInstant(JstTimes.JST).toLocalDate(),

@@ -77,7 +77,7 @@ public class Mp3Encoder {
         cmd.add("3");
         addMeta(cmd, "title", m.title());
         addMeta(cmd, "artist", m.performers());
-        addMeta(cmd, "album", m.stationName());
+        addMeta(cmd, "album", m.albumTitle());
         addMeta(cmd, "album_artist", m.stationName());
         if (m.broadcastDate() != null) {
             addMeta(cmd, "date", DATE_FMT.format(m.broadcastDate()));
@@ -97,8 +97,15 @@ public class Mp3Encoder {
         try { Files.deleteIfExists(mp3); } catch (IOException ignore) {}
     }
 
+    /**
+     * @param title        ID3 Title。要件 F2 通り「番組名_YYYYMMDD-HHMM」を渡す
+     * @param albumTitle   ID3 Album。素の番組名（_YYYYMMDD-HHMM を含まない）
+     * @param performers   ID3 Artist
+     * @param stationName  ID3 Album Artist（放送局の和名）
+     */
     public record Mp3Metadata(
             String title,
+            String albumTitle,
             String performers,
             String stationName,
             LocalDate broadcastDate,
