@@ -15,6 +15,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -53,7 +57,7 @@ public class ProgramFetchService {
 
         // programs upsert (station_id, broadcast_start_at)
         int upsertedPrograms = 0;
-        for (Program incoming : fetched.programs()) {
+        for (Program incoming : dedupeByKey(fetched.programs())) {
             Optional<Program> existing = programRepository.findByStationIdAndBroadcastStartAt(
                     incoming.getStationId(), incoming.getBroadcastStartAt());
             Program to = existing.orElse(incoming);
@@ -90,6 +94,25 @@ public class ProgramFetchService {
                 fetched.stations().size(),
                 upsertedPrograms,
                 fetched.stationsFailed());
+    }
+
+    /**
+     * ラジコの番組表 XML には、まれに同一放送局・同一開始時刻の番組が重複して含まれる
+     * （例: 2026-08-02 NACK5 20:00 に 20:00-21:00 と 20:00-20:30 の 2 件）。
+     * programs は uq_programs_station_start で一意のため、そのまま upsert すると
+     * 同一トランザクション内で INSERT 直後に UPDATE が走る。後勝ちで 1 件に寄せる。
+     */
+    private Collection<Program> dedupeByKey(List<Program> programs) {
+        Map<String, Program> byKey = new LinkedHashMap<>();
+        for (Program p : programs) {
+            String key = p.getStationId() + "@" + p.getBroadcastStartAt();
+            Program prev = byKey.put(key, p);
+            if (prev != null) {
+                log.warn("Duplicate program in radiko XML (last wins): station={} start={} dropped={} kept={}",
+                        p.getStationId(), p.getBroadcastStartAt(), prev.getTitle(), p.getTitle());
+            }
+        }
+        return byKey.values();
     }
 
     public record FetchAndPersistResult(int stationsUpserted, int programsUpserted, int stationsFailed) {}

@@ -137,7 +137,7 @@ public class RadikoProgramFetcher {
                 success++;
             } catch (RuntimeException e) {
                 failed++;
-                log.warn("Skipping station due to parse error: id={} cause={}", station.id, e.toString());
+                log.warn("Skipping station due to parse error: id={} cause={}", station.id, e.toString(), e);
             }
         }
         return new ParseResult(success, failed, stations, programs);

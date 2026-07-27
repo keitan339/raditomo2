@@ -1,5 +1,6 @@
 package com.raditomo.registration.entity;
 
+import com.raditomo.common.time.JstTimes;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -46,6 +47,14 @@ public class DownloadRegistration {
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false, insertable = false)
+    // insertable = false にすると UPDATE 時に値をセットし忘れて NULL 違反になるため、
+    // アプリ側（@PrePersist / @PreUpdate）で必ず値を入れる。
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    void touchUpdatedAt() {
+        updatedAt = OffsetDateTime.now(JstTimes.JST);
+    }
 }

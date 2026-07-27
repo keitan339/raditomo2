@@ -136,7 +136,7 @@ public class F4BatchRunner {
                     totalPrograms += r.programsUpserted();
                 } catch (RuntimeException e) {
                     failedCombinations++;
-                    log.warn("F4 partial failure: date={} area={} cause={}", date, areaId, e.toString());
+                    log.warn("F4 partial failure: date={} area={} cause={}", date, areaId, e.toString(), e);
                 }
             }
         }

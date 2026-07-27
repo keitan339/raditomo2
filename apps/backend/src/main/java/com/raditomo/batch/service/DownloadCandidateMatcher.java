@@ -81,7 +81,7 @@ public class DownloadCandidateMatcher {
             try {
                 candidates.addAll(match(r, targetDate, force, now));
             } catch (RuntimeException e) {
-                log.warn("Match failed for registration id={}: {}", r.getId(), e.toString());
+                log.warn("Match failed for registration id={}: {}", r.getId(), e.toString(), e);
             }
         }
         return candidates;

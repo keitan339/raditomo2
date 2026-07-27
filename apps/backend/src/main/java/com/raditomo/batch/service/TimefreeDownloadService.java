@@ -135,7 +135,7 @@ public class TimefreeDownloadService {
             } catch (RuntimeException | IOException e) {
                 lastError = e;
                 log.warn("Download attempt {}/{} failed: stationId={} startAt={} cause={}",
-                        attempt, MAX_ATTEMPTS, c.stationId(), c.broadcastStartAt(), e.toString());
+                        attempt, MAX_ATTEMPTS, c.stationId(), c.broadcastStartAt(), e.toString(), e);
             }
         }
         cleanupPartial(aacTemp, mp3Path, hlsDir);
